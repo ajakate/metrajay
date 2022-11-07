@@ -1,19 +1,44 @@
 export default class Paths {
 
-	constructor(
-		public paths: any,
-	) { }
+    paths: any[];
 
-    isEmpty() {
-        return Object.keys(this.paths).length === 0
+	constructor(raw: any) {
+        if (Object.keys(raw).length === 0) {
+            this.paths = []
+        } else {
+            this.paths = Object.entries(raw).map(entry => {
+                return {
+                    ...entry[1],
+                    id: entry[0]
+                }
+            })
+        }
     }
 
-    // TODO: deletemedebug
-    getName(id: string) {
-        if (this.isEmpty()) {
-            return "nope"
+    isEmpty() {
+        return this.paths.length === 0
+    }
+
+    stationList() {
+        return this.paths;
+    }
+
+    getFullName(station: string) {
+        return this.paths.find(x=>x.id===station).name
+    }
+
+    // TODO: fix name
+    stationListForStation(station: string) {
+        if (this.isEmpty() || (station === '' || station === undefined)) {
+            return [];
         } else {
-            return this.paths[id]['name']
+            let routeIds = this.paths.find(x=>x.id===station).routes.map(r => r.id)
+
+            let filtered = this.paths.filter(path => {
+                let pathRoutes = path.routes.map(r => r.id)
+                return routeIds.some(r => pathRoutes.includes(r))
+            });
+            return filtered;
         }
     }
 }
