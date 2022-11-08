@@ -32,6 +32,47 @@ export default class Schedule {
         })
     }
 
+    keyName() {
+        return [this.station1, this.station2]
+    }
+
+    // TODO: fix THIS!!!!!
+    timesForGroup(groupName:string) {
+        if (this.isEmpty()) {
+            return {
+                inbound: [],
+                outbound: []
+            }
+        }
+
+        if (groupName === undefined) {
+            return {
+                inbound: [],
+                outbound: []
+            }
+        }
+        
+        let grouped = this.data.map(group => {
+            let dates = group.dates.map(d => weekdays[new Date(d[0]).getDay()]);
+            let inbound = group.inbound
+            let outbound = group.outbound
+            if (dates.length < 2) {
+                return [dates[0], inbound, outbound]
+            } else {
+                return [`${dates[0]} - ${dates[dates.length - 1]}`, inbound, outbound]
+            }
+        })
+
+        let g = grouped.find(x => {
+            return x[0]===groupName
+        })
+
+        return {
+            inbound: g[1],
+            outbound: g[2]
+        }
+    }
+
     isEmpty() {
         return this.data.length === 0
     }

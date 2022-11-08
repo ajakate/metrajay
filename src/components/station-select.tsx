@@ -14,6 +14,7 @@ export default function StationSelect(props: any) {
             <Text>{title}</Text>
             <SearchableDropdown
                 autosize={true}
+                placeholder=''
                 onItemSelect={(item: any) => onSelect(item)}
                 containerStyle={{ padding: 5 }}
                 itemStyle={{

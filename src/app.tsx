@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useReducer } from 'react';
 import { Buffer } from "buffer";
 import Paths from './models/paths';
 import { ActivityIndicator, MD2Colors, Appbar } from 'react-native-paper';
@@ -8,58 +8,45 @@ import SelectPage from './pages/select-page';
 import SchedulePage from './pages/schedule-page';
 import { serverFetch } from './util/server';
 import Schedule from './models/schedule';
+import { createStackNavigator } from '@react-navigation/stack'
+import { NavigationContainer } from '@react-navigation/native'
+import { actionCreators, initialState, reducer } from './reducers/store';
+import CustomContext from './reducers/context';
+import CustomAppBar from './components/custom-app-bar';
 
-const initApp = async (setPathsFunc: any) => {
+
+const Stack = createStackNavigator();
+
+const initApp = async (dispatch: any) => {
     let data = await serverFetch("/paths");
-    let paths = new Paths(data)
-    setPathsFunc(paths);
+    dispatch(actionCreators.setPaths(new Paths(data)))
 };
-
-const initSched = async (paths: Paths, setSchedFunc: any) => {
-    let sched = await Schedule.asyncCreate('OTC', 'LOMBARD', paths)
-    setSchedFunc(sched);
-}
 
 export default function App() {
 
-    const [paths, setPaths] = useState(new Paths({}));
-    const [schedule, setSchedule] = useState(Schedule.empty());
+    const [state, dispatch] = useReducer(reducer, initialState);
+
+    const providerState = {
+        state,
+        dispatch
+    }
 
     useEffect(() => {
-        initApp(setPaths);
+        initApp(dispatch);
     }, []);
 
-    useEffect(() => {
-        initSched(paths, setSchedule)
-	}, [paths]);
-
     return (
-        <React.Fragment>
-            <Appbar.Header>
-                <Appbar.Content title="Metrajay" />
-                <Appbar.Action icon="folder-heart-outline" onPress={() => { }} />
-                <Appbar.Action icon="sticker-plus-outline" onPress={() => { }} />
-            </Appbar.Header>
-            <SchedulePage schedule={schedule}/>
-            <SelectPage paths={paths}/>
-        </React.Fragment>
+        <CustomContext.Provider value={providerState}>
+            <NavigationContainer>
+                <Stack.Navigator
+                    initialRouteName="SelectPage"
+                    screenOptions={{
+                        header: CustomAppBar,
+                    }}>
+                    <Stack.Screen name="SelectPage" component={SelectPage} />
+                    <Stack.Screen name="SchedulePage" component={SchedulePage} />
+                </Stack.Navigator>
+            </NavigationContainer>
+        </CustomContext.Provider>
     )
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: 'white',
-        padding: 10,
-        paddingTop: 100
-    },
-    titleText: {
-        padding: 8,
-        fontSize: 16,
-        textAlign: 'center',
-        fontWeight: 'bold',
-    },
-    headingText: {
-        padding: 8,
-    },
-});
