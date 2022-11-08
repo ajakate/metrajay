@@ -13,23 +13,29 @@ const weekdays = {
 
 export default class Schedule {
 
+    parsedGroups: any[];
+
     constructor(
         public station1: string,
         public station2: string,
         public station1FullName: string,
         public station2FullName: string,
         public data: any
-	) { }
-
-    groups() {
-        return this.data.map(group => {
+    ) {
+        this.parsedGroups = this.data.map(group => {
             let dates = group.dates.map(d => weekdays[new Date(d[0]).getDay()]);
+            let inbound = group.inbound
+            let outbound = group.outbound
             if (dates.length < 2) {
-                return dates[0]
+                return [dates[0], inbound, outbound]
             } else {
-                return `${dates[0]} - ${dates[dates.length - 1]}`
+                return [`${dates[0]} - ${dates[dates.length - 1]}`, inbound, outbound]
             }
         })
+    }
+
+    groups() {
+        return this.parsedGroups.map(g => { return g[0] })
     }
 
     keyName() {
@@ -37,7 +43,7 @@ export default class Schedule {
     }
 
     // TODO: fix THIS!!!!!
-    timesForGroup(groupName:string) {
+    timesForGroup(groupName: string) {
         if (this.isEmpty()) {
             return {
                 inbound: [],
@@ -51,20 +57,9 @@ export default class Schedule {
                 outbound: []
             }
         }
-        
-        let grouped = this.data.map(group => {
-            let dates = group.dates.map(d => weekdays[new Date(d[0]).getDay()]);
-            let inbound = group.inbound
-            let outbound = group.outbound
-            if (dates.length < 2) {
-                return [dates[0], inbound, outbound]
-            } else {
-                return [`${dates[0]} - ${dates[dates.length - 1]}`, inbound, outbound]
-            }
-        })
 
-        let g = grouped.find(x => {
-            return x[0]===groupName
+        let g = this.parsedGroups.find(x => {
+            return x[0] === groupName
         })
 
         return {
@@ -77,7 +72,7 @@ export default class Schedule {
         return this.data.length === 0
     }
 
-    static async asyncCreate(station1:string, station2:string, paths: Paths) {
+    static async asyncCreate(station1: string, station2: string, paths: Paths) {
         let data = await serverFetch(`/stops?stop1=${station1}&stop2=${station2}`)
         let station1FullName = paths.getFullName(station1);
         let station2FullName = paths.getFullName(station2);
@@ -85,6 +80,6 @@ export default class Schedule {
     }
 
     static empty() {
-        return new Schedule('','','','',[])
+        return new Schedule('', '', '', '', [])
     }
 }

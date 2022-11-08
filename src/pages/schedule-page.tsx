@@ -90,7 +90,8 @@ export default function SchedulePage() {
                         <DataTable.Title>Departure</DataTable.Title>
                         <DataTable.Title>Arrival</DataTable.Title>
                     </DataTable.Header>
-                    <ScrollView>
+                    <View style={{ height: 500 }}>
+                    <ScrollView >
                         {
                             activeTimes.map(time => {
                                 return (
@@ -102,6 +103,7 @@ export default function SchedulePage() {
                             })
                         }
                     </ScrollView>
+                    </View>
                 </DataTable>
             </View>
         )
