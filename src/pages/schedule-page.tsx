@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, startTransition } from 'react';
 import { METRAJAY_SERVER_URL, BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD } from '@env'
 import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import { Buffer } from "buffer";
@@ -23,6 +23,21 @@ export default function SchedulePage() {
     let [bound, setBound] = useState('inbound')
 
     const activeTimes = schedule.timesForGroup(selectedDate)[bound]
+
+    const findStations = () => {
+        if (schedule.isEmpty()) {
+            return []
+        }
+        let inner = schedule.data[0].inner_station;
+        let outer = schedule.data[0].outer_station;
+        if (bound === 'inbound') {
+            return [outer, inner]
+        } else {
+            return [inner, outer]
+        }
+    }
+
+    const stations = findStations().map(st => state.paths.getFullName(st));
 
     const loadingSchedule = () => {
         try {
@@ -58,7 +73,6 @@ export default function SchedulePage() {
             <ActivityIndicator animating={true} color={MD2Colors.red800} />
         ) : (
             <View>
-                <Text>{schedule.keyName()[0]}</Text>
                 <View style={styles.buttonContainer}>
                     {
                         ['inbound', 'outbound'].map(g => {
@@ -79,7 +93,11 @@ export default function SchedulePage() {
                         schedule.groups().map(g => {
                             return (
                                 <View key={g} style={{ flex: 1 }}>
-                                    <Button disabled={selectedDate === g} mode="contained" style={styles.button} onPress={() => setSelectedDate(g)}>{g}</Button>
+                                    <Button
+                                    disabled={selectedDate === g}
+                                    mode="contained" style={styles.button}
+                                    compact={true}
+                                    onPress={() => setSelectedDate(g)}>{g}</Button>
                                 </View>
                             )
                         })
@@ -87,8 +105,11 @@ export default function SchedulePage() {
                 </View>
                 <DataTable>
                     <DataTable.Header>
-                        <DataTable.Title>Departure</DataTable.Title>
-                        <DataTable.Title>Arrival</DataTable.Title>
+                        {
+                            stations.map( name => {
+                                return <DataTable.Title key={name}>{name}</DataTable.Title>
+                            })
+                        }
                     </DataTable.Header>
                     <View style={{ height: 500 }}>
                     <ScrollView >

@@ -11,6 +11,25 @@ const weekdays = {
     6: 'Sun'
 }
 
+const formatDate = (str) => {
+    let am = "am"
+    let [hour, minute, _] = str.split(":")
+    let ihour = parseInt(hour)
+    if (ihour > 11 && ihour < 24) {
+        am = "pm"
+    }
+
+    if (ihour > 12) {
+        ihour = ihour - 12
+    }
+
+    if (ihour > 12) {
+        ihour = ihour - 12
+    }
+
+    return `${ihour}:${minute} ${am}`
+}
+
 export default class Schedule {
 
     parsedGroups: any[];
@@ -24,12 +43,12 @@ export default class Schedule {
     ) {
         this.parsedGroups = this.data.map(group => {
             let dates = group.dates.map(d => weekdays[new Date(d[0]).getDay()]);
-            let inbound = group.inbound
-            let outbound = group.outbound
+            let inbound = group.inbound.map(i => [formatDate(i[0]), formatDate(i[1])])
+            let outbound = group.outbound.map(i => [formatDate(i[0]), formatDate(i[1])])
             if (dates.length < 2) {
                 return [dates[0], inbound, outbound]
             } else {
-                return [`${dates[0]} - ${dates[dates.length - 1]}`, inbound, outbound]
+                return [`${dates[0]}-${dates[dates.length - 1]}`, inbound, outbound]
             }
         })
     }
