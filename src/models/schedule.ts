@@ -63,20 +63,6 @@ export default class Schedule {
 
     // TODO: fix THIS!!!!!
     timesForGroup(groupName: string) {
-        if (this.isEmpty()) {
-            return {
-                inbound: [],
-                outbound: []
-            }
-        }
-
-        if (groupName === undefined) {
-            return {
-                inbound: [],
-                outbound: []
-            }
-        }
-
         let g = this.parsedGroups.find(x => {
             return x[0] === groupName
         })
@@ -85,10 +71,6 @@ export default class Schedule {
             inbound: g[1],
             outbound: g[2]
         }
-    }
-
-    isEmpty() {
-        return this.data.length === 0
     }
 
     static async asyncCreate(station1: string, station2: string, paths: Paths) {

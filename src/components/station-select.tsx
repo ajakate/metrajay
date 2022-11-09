@@ -40,7 +40,6 @@ export default function StationSelect(props: any) {
                             borderColor: '#ccc',
                             borderRadius: 5,
                         },
-                        onTextChange: text => console.log(text)
                     }
                 }
                 listProps={

@@ -5,19 +5,20 @@ import { Buffer } from "buffer";
 import { METRAJAY_SERVER_URL, BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD } from '@env'
 import StationSelect from '../components/station-select';
 import { ActivityIndicator, MD2Colors, Appbar } from 'react-native-paper';
-import { actionCreators, initialState, reducer } from '../reducers/store';
-import { useCustomContext } from '../reducers/context';
 import { Button, TextInput } from 'react-native-paper';
 import Schedule from '../models/schedule';
 import { NavigationContext } from '@react-navigation/native';
+import { observer } from 'mobx-react-lite';
+import { useStore } from '../stores/store';
 
-export default function SelectPage() {
+// TODO: remove mox-react from package json
+const SelectPage = observer(() => {
 
-    const { state, dispatch } = useCustomContext();
-    const [stations, setStations] = useState({ station1: '', station2: '' });
+    const { paths, setSchedule } = useStore();
+    const empty = {id: '', name: ''}
+    const [stations, setStations] = useState({ station1: empty, station2: empty });
     // TODO: deleteme
     // const [stations, setStations] = useState({ station1: {id: 'ELMHURST'}, station2: {id: 'LOMBARD'} });
-    const [loadingSubmit, setLoadingSubmit] = useState(false)
     const navigation = React.useContext(NavigationContext);
 
     const clearSelections = () => {
@@ -35,54 +36,50 @@ export default function SelectPage() {
     const canSubmit = (stations.station1 !== "" && stations.station2 !== "")
 
     const doSubmit = async () => {
-        setLoadingSubmit(true)
-        dispatch(actionCreators.setActiveSchedule([stations.station1.id, stations.station2.id]))
-        navigation.navigate('SchedulePage')
+        setSchedule([stations.station1.id, stations.station2.id])
+        navigation.navigate('ScheduleScreen')
     }
 
     return (
-        state.loadingPaths ? (
-            <ActivityIndicator animating={true} color={MD2Colors.red800} />
-        ) : (
-            <React.Fragment>
-                <View style={styles.buttonContainer}>
-                    <View style={styles.button}>
-                        <Button
-                            mode="elevated"
-                            onPress={() => clearSelections()}
-                            icon="eraser">
-                            clear
-                        </Button>
-                    </View>
-                    <View style={styles.button}>
-                        <Button
-                            loading={loadingSubmit}
-                            mode="contained"
-                            disabled={!canSubmit}
-                            onPress={doSubmit}
-                            icon="arrow-right-bold">
-                            submit
-                        </Button>
-                    </View>
+        <React.Fragment>
+            <View style={styles.buttonContainer}>
+                <View style={styles.button}>
+                    <Button
+                        mode="elevated"
+                        onPress={() => clearSelections()}
+                        icon="eraser">
+                        clear
+                    </Button>
                 </View>
-                <View style={styles.container}>
-                    <StationSelect
-                        title={"Select first station"}
-                        stationList={state.paths.stationList()}
-                        onSelect={updateStation1}
-                        selected={stations.station1}
-                    />
-                    <StationSelect
-                        title={"Select second station"}
-                        stationList={state.paths.stationListForStation(stations.station1.id)}
-                        onSelect={updateStation2}
-                        selected={stations.station2}
-                    />
+                <View style={styles.button}>
+                    <Button
+                        mode="contained"
+                        disabled={!canSubmit}
+                        onPress={doSubmit}
+                        icon="arrow-right-bold">
+                        submit
+                    </Button>
                 </View>
-            </React.Fragment>
-        )
+            </View>
+            <View style={styles.container}>
+                <StationSelect
+                    title={"Select first station"}
+                    stationList={paths.stationList()}
+                    onSelect={updateStation1}
+                    selected={stations.station1}
+                />
+                <StationSelect
+                    title={"Select second station"}
+                    stationList={paths.stationListForStation(stations.station1.id)}
+                    onSelect={updateStation2}
+                    selected={stations.station2}
+                />
+            </View>
+        </React.Fragment>
     )
-}
+})
+
+export default SelectPage;
 
 const styles = StyleSheet.create({
     container: {

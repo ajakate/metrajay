@@ -1,52 +1,42 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
-import React, { useEffect, useState, useRef, useReducer } from 'react';
-import { Buffer } from "buffer";
-import Paths from './models/paths';
-import { ActivityIndicator, MD2Colors, Appbar } from 'react-native-paper';
-import SelectPage from './pages/select-page';
-import SchedulePage from './pages/schedule-page';
-import { serverFetch } from './util/server';
-import Schedule from './models/schedule';
-import { createStackNavigator } from '@react-navigation/stack'
-import { NavigationContainer } from '@react-navigation/native'
-import { actionCreators, initialState, reducer } from './reducers/store';
-import CustomContext from './reducers/context';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { observer } from 'mobx-react-lite';
+import React, { useEffect } from 'react';
 import CustomAppBar from './components/custom-app-bar';
-
+import Paths from './models/paths';
+import ScheduleScreen from './screens/schedule-screen';
+import SelectScreen from './screens/select-screen';
+import { useStore } from './stores/store';
+import { serverFetch } from './util/server';
 
 const Stack = createStackNavigator();
 
-const initApp = async (dispatch: any) => {
+// TODO: move this logic
+const initApp = async (setPaths: any) => {
     let data = await serverFetch("/paths");
-    dispatch(actionCreators.setPaths(new Paths(data)))
+    setPaths(new Paths(data))
 };
 
-export default function App() {
+const Metrajay = observer(() => {
 
-    const [state, dispatch] = useReducer(reducer, initialState);
-
-    const providerState = {
-        state,
-        dispatch
-    }
+    const { setPaths } = useStore();
 
     useEffect(() => {
-        initApp(dispatch);
+        initApp(setPaths);
     }, []);
 
     return (
-        <CustomContext.Provider value={providerState}>
-            <NavigationContainer>
-                <Stack.Navigator
-                    initialRouteName="SelectPage"
-                    screenOptions={{
-                        header: CustomAppBar,
-                    }}>
-                    <Stack.Screen name="SelectPage" component={SelectPage} />
-                    <Stack.Screen name="SchedulePage" component={SchedulePage} />
-                </Stack.Navigator>
-            </NavigationContainer>
-        </CustomContext.Provider>
+        <NavigationContainer>
+            <Stack.Navigator
+                initialRouteName="SelectScreen"
+                screenOptions={{
+                    header: CustomAppBar,
+                }}>
+                <Stack.Screen name="SelectScreen" component={SelectScreen} />
+                <Stack.Screen name="ScheduleScreen" component={ScheduleScreen} />
+            </Stack.Navigator>
+        </NavigationContainer>
     )
-}
+})
+
+export default Metrajay;

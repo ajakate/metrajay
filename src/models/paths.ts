@@ -27,7 +27,7 @@ export default class Paths {
         return this.paths.find(x=>x.id===station).name
     }
 
-    // TODO: fix name
+    // TODO: fix name, fix the empty bits, crashes page load
     stationListForStation(station: string) {
         if (this.isEmpty() || (station === '' || station === undefined)) {
             return [];
