@@ -6,8 +6,8 @@ import CustomAppBar from './components/custom-app-bar';
 import LoadingWrapper from './components/loading-wrapper';
 import Paths from './models/paths';
 import FavoritesPage from './pages/favorites-page';
-import ScheduleScreen from './screens/schedule-screen';
-import SelectScreen from './screens/select-screen';
+import SchedulePage from './pages/schedule-page';
+import SelectPage from './pages/select-page';
 import { useStore } from './stores/store';
 import { serverFetch } from './util/server';
 
@@ -27,6 +27,28 @@ const FavoritesScreen = observer(() => {
     return (
         <LoadingWrapper loading={loadingFavorites}>
             <FavoritesPage/>
+        </LoadingWrapper>
+    )
+});
+
+const ScheduleScreen = observer(() => {
+
+    const { isScheduleLoading } = useStore();
+
+    return (
+        <LoadingWrapper loading={isScheduleLoading()}>
+            <SchedulePage/>
+        </LoadingWrapper>
+    )
+});
+
+const SelectScreen = observer(() => {
+
+    const { isPathLoading } = useStore();
+
+    return (
+        <LoadingWrapper loading={isPathLoading()}>
+            <SelectPage/>
         </LoadingWrapper>
     )
 });
