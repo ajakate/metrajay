@@ -42,7 +42,7 @@ const FavoritesPage = observer(() => {
                     {
                         favorites.map(f => {
                             return (
-                                <DataTable.Row>
+                                <DataTable.Row key={JSON.stringify(f)}>
                                     <DataTable.Cell>
                                         <View>
                                             <Text>
