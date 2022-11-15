@@ -4,6 +4,7 @@ import { MD2Colors, ActivityIndicator } from "react-native-paper";
 import SelectPage from "../pages/select-page";
 import { useStore } from "../stores/store";
 import { observer } from 'mobx-react-lite';
+import LoadingWrapper from "../components/loading-wrapper";
 
 const SelectScreen = observer(() => {
 
@@ -11,11 +12,9 @@ const SelectScreen = observer(() => {
     const navigation = React.useContext(NavigationContext);
 
     return (
-        isPathLoading() ? (
-            <ActivityIndicator animating={true} color={MD2Colors.red800} />
-        ) : (
+        <LoadingWrapper loading={isPathLoading()}>
             <SelectPage/>
-        )
+        </LoadingWrapper>
     )
 });
 
