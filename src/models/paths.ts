@@ -38,7 +38,7 @@ export default class Paths {
                 let pathRoutes = path.routes.map(r => r.id)
                 return routeIds.some(r => pathRoutes.includes(r))
             });
-            return filtered;
+            return filtered.filter(x=>x.id!==station);
         }
     }
 }

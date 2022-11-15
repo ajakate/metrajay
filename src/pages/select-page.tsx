@@ -21,8 +21,14 @@ const SelectPage = observer(() => {
     // const [stations, setStations] = useState({ station1: {id: 'ELMHURST'}, station2: {id: 'LOMBARD'} });
     const navigation = React.useContext(NavigationContext);
 
+    const exists = obj => {
+        return obj.name.length > 0
+    }
+
+    const isDisabled = !exists(stations.station1)
+
     const clearSelections = () => {
-        setStations({ station1: '', station2: '' })
+        setStations({ station1: empty, station2: empty })
     }
 
     const updateStation1 = (val) => {
@@ -33,7 +39,7 @@ const SelectPage = observer(() => {
         setStations({ ...stations, station2: val })
     }
 
-    const canSubmit = (stations.station1 !== "" && stations.station2 !== "")
+    const canSubmit = (exists(stations.station1) && exists(stations.station2))
 
     const doSubmit = async () => {
         setSchedule([stations.station1.id, stations.station2.id])
@@ -73,6 +79,7 @@ const SelectPage = observer(() => {
                     stationList={paths.stationListForStation(stations.station1.id)}
                     onSelect={updateStation2}
                     selected={stations.station2}
+                    disabled={isDisabled}
                 />
             </View>
         </React.Fragment>
