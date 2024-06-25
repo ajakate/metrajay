@@ -1,4 +1,3 @@
-import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect } from 'react';
@@ -62,7 +61,6 @@ const Metrajay = observer(() => {
     }, []);
 
     return (
-        <NavigationContainer>
             <Stack.Navigator
                 initialRouteName="FavoritesScreen"
                 screenOptions={{
@@ -72,7 +70,6 @@ const Metrajay = observer(() => {
                 <Stack.Screen name="ScheduleScreen" component={ScheduleScreen} />
                 <Stack.Screen name="FavoritesScreen" component={FavoritesScreen} />
             </Stack.Navigator>
-        </NavigationContainer>
     )
 })
 

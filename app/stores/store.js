@@ -44,9 +44,9 @@ class Store {
             if (jsonVal != null) {
                 runInAction(() => {
                     this.favorites = JSON.parse(jsonVal)
-                    this.loadingFavorites = false
                 })
             }
+            this.loadingFavorites = false
         })
     }
 
