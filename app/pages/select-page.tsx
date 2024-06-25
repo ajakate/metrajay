@@ -2,7 +2,6 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 import React, { useEffect, useState, useRef, useReducer } from 'react';
 import { Buffer } from "buffer";
-import { METRAJAY_SERVER_URL, BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD } from '@env'
 import StationSelect from '../components/station-select';
 import { ActivityIndicator, MD2Colors, Appbar } from 'react-native-paper';
 import { Button, TextInput } from 'react-native-paper';
