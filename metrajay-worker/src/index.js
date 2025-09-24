@@ -20,9 +20,11 @@ const getLastPublished = async (metraUsername, metraPassword) => {
 	const response = await fetchFromMetra("/published.txt", metraUsername, metraPassword);
 	
 	return new Response(response.body, {headers: {
+		"Content-Type": "text/plain",
 		"Access-Control-Allow-Origin": "*",
 		"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 		"Access-Control-Allow-Headers": "*",
+		"Access-Control-Allow-Credentials": true,
 	}});
 }
 
@@ -34,6 +36,7 @@ const getSchedule = async (metraUsername, metraPassword) => {
 		"Access-Control-Allow-Origin": "*",
 		"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 		"Access-Control-Allow-Headers": "*",
+		"Access-Control-Allow-Credentials": true,
 	}});
 }
 
