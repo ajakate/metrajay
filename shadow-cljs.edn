@@ -1,0 +1,17 @@
+{:source-paths
+ ["src"]
+
+ :dependencies
+ [[reagent "2.0.0-alpha2"]
+  [re-frame "1.4.3"]
+  [akiroz.re-frame/storage "0.1.4"]
+  [re-frisk "1.7.1"]
+  [re-frisk-remote "1.6.0"]]
+
+ :dev-http {8080 "public"}
+ :nrepl {:port 6666}
+
+ :builds
+ {:app {:target :browser
+        :output-dir "public/js/"
+        :modules {:main {:init-fn metrajay.app/init}}}}}
