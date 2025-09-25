@@ -20,9 +20,13 @@
 
 (rf/reg-event-fx
  :init-db
- (fn [_ [_ _]]
-   (appdb/init-db)
-   {}))
+ (fn [{:keys [db]} [_ _]]
+   (let [raw-version (:db_version db)
+         version (if (nil? raw-version) 0 raw-version)
+         reset-commands (appdb/db-reset-commands version)
+         full-commands (conj reset-commands #(rf/dispatch [:update-db-version version]))]
+     (appdb/run-commands full-commands)
+     {})))
 
 
 (rf/reg-event-fx
@@ -61,7 +65,6 @@
  (fn [_ [_ response]]
    (let [zip (JSZip.)
          body (:body response)]
-     (js/console.log "Unzipping..." response)
      (js/console.log "Unzipping..." body)
      (-> (.loadAsync zip body)
          (.then (fn [unzipped]
@@ -69,30 +72,62 @@
                    (for [[filename _] appdb/table-map]
                      (.. unzipped (file filename) (async "string"))))))
          (.then (fn [texts]
-                  (rf/dispatch [:load-csvs
+                  (rf/dispatch [:increment-db-and-load-csvs
                                 (map vector (vals appdb/table-map) texts)])))))
    {}))
 
 (rf/reg-event-fx
- :load-csvs
- (fn [_ [_ table-csvs]]
-   (js/console.log "Loading CSVs into DB sequentially...")
-   (let [chain
-         (reduce (fn [prev [table-name csv]]
-                   (.then prev
-                          (fn [_]
-                            (-> (.promise js/alasql (str "DELETE FROM " table-name " WHERE 1"))
-                                (.then (fn [_] (.promise js/alasql (str "INSERT INTO " table-name
-                                                                        " SELECT " (str/join ", " (get appdb/table-fields table-name))  " FROM CSV(?,{headers:true})") csv)))))))
-                 (.resolve js/Promise)
-                 table-csvs)]
-     (.then chain
-            (fn [_]
-              (js/console.log "All tables loaded and persisted to IndexedDB."))))
-   {}))
+ :increment-db-and-load-csvs
+ (fn [{:keys [db]} [_ table-csvs]]
+   (let [new-db-version (inc (:db_version db))
+         commands (appdb/db-reset-commands new-db-version)
+         full-commands (-> commands
+                           (conj #(rf/dispatch [:update-db-version new-db-version]))
+                           (conj #(rf/dispatch [:load-new-db table-csvs])))]
+     (appdb/run-commands full-commands)
+     {:db (assoc db :db_version new-db-version :debug table-csvs)})))
 
+
+(defn map-entry-to-command [table-csv]
+  (let [[table-name csv] table-csv]
+    (js/console.log "Loading " table-name " into DB...")
+    #(js/alasql (str "INSERT INTO " table-name
+                     " SELECT " (str/join ", " (get appdb/table-fields table-name))  " FROM CSV(?,{headers:true})") csv)))
+
+(rf/reg-event-fx
+ :load-new-db
+ (fn [{:keys [db]} [_ table-csvs]]
+   (js/console.log "Loading CSVs into DB sequentially...")
+   (let [commands (mapv map-entry-to-command table-csvs)
+         full-commands (-> commands
+                           (conj #(js/console.log "All tables loaded and persisted to IndexedDB."))
+                           (conj #(rf/dispatch [:remove-old-dbs])))]
+     (appdb/run-commands full-commands)
+     {})))
+
+(rf/reg-event-fx
+ :remove-old-dbs
+ (fn [{:keys [db]} _]
+   (js/console.log "Removing old DBs...")
+   (-> (js/window.indexedDB.databases)
+       (.then (fn [dbs]
+                (doseq [odb dbs]
+                  (let [db-name (.-name odb)
+                        current-name (str "metrajay_v" (:db_version db))]
+                    (when (and
+                           (re-find #"metrajay_v[0-9]+$" db-name)
+                           (not= db-name current-name))
+                      (js/console.log "Removing " db-name "...")
+                      (js/window.indexedDB.deleteDatabase db-name)))))))
+
+   {}))
 
 (rf/reg-event-fx
  :bad-fetch-result
  (fn [{:keys [db]} [_ error]]
    {:db (assoc db :error error)}))
+
+(persisted-reg-event-db
+ :update-db-version
+ (fn [db [_ version]]
+   (assoc db :db_version version)))

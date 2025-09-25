@@ -17,6 +17,6 @@
 (defonce root (delay (rdomc/create-root (.getElementById js/document "root"))))
 
 (defn ^:export ^:dev/after-load init []
-  (rf/dispatch [:init-local-storage])
+  (rf/dispatch-sync [:init-local-storage])
   (rf/dispatch [:init-db])
   (rdomc/render @root [simple-component]))

@@ -16,15 +16,29 @@
    "stops" ["stop_id" "stop_name"]
    "trips" ["route_id" "service_id" "trip_id" "trip_headsign" "direction_id"]})
 
-(defn init-db []
-  (-> (.promise js/alasql "CREATE INDEXEDDB DATABASE IF NOT EXISTS metrajay;")
-      (.then (fn [_] (.promise js/alasql "ATTACH INDEXEDDB DATABASE metrajay;")))
-      (.then (fn [_] (.promise js/alasql "USE metrajay;")))
-      (.then (fn [_] (.promise js/alasql "create table if not exists calendar_dates;")))
-      (.then (fn [_] (.promise js/alasql "create table if not exists calendar;")))
-      (.then (fn [_] (.promise js/alasql "create table if not exists routes;")))
-      (.then (fn [_] (.promise js/alasql "create table if not exists stop_times;")))
-      (.then (fn [_] (.promise js/alasql "create table if not exists stops;")))
-      (.then (fn [_] (.promise js/alasql "create table if not exists trips;")))
-      (.then (fn [_] (js/console.log "done")))
-      (.catch (fn [err] (js/console.error "DB init error:" err)))))
+;; TODO: delete maybe?
+(defn run-commands
+  "Takes a seq of SQL strings (or functions) and runs them in order as promises.
+   Returns a promise that resolves when all are done."
+  [cmds]
+  (reduce
+   (fn [p cmd]
+     (.then p
+            (fn [_]
+              (if (string? cmd)
+                (.promise js/alasql cmd)
+                (cmd)))))   ;; allow passing fns too, e.g. #(js/console.log "done")
+   (js/Promise.resolve)  ;; initial resolved promise
+   cmds))
+
+(defn db-reset-commands [version]
+  [(str "CREATE INDEXEDDB DATABASE IF NOT EXISTS metrajay_v" version ";")
+   (str "ATTACH INDEXEDDB DATABASE metrajay_v" version ";")
+   (str "USE metrajay_v" version ";")
+   "create table if not exists calendar_dates;"
+   "create table if not exists calendar;"
+   "create table if not exists routes;"
+   "create table if not exists stop_times;"
+   "create table if not exists stops;"
+   "create table if not exists trips;"]
+  )
