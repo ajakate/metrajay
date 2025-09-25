@@ -119,7 +119,6 @@
                            (not= db-name current-name))
                       (js/console.log "Removing " db-name "...")
                       (js/window.indexedDB.deleteDatabase db-name)))))))
-
    {}))
 
 (rf/reg-event-fx

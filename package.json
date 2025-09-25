@@ -3,7 +3,8 @@
     "version": "0.0.1",
     "scripts": {
         "dev": "shadow-cljs watch app",
-        "repl": "shadow-cljs repl app"
+        "repl": "shadow-cljs repl app",
+        "build": "shadow-cljs release app"
     },
     "devDependencies": {
         "shadow-cljs": "2.26.0"

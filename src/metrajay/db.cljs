@@ -40,5 +40,4 @@
    "create table if not exists routes;"
    "create table if not exists stop_times;"
    "create table if not exists stops;"
-   "create table if not exists trips;"]
-  )
+   "create table if not exists trips;"])
