@@ -18,4 +18,5 @@
 
 (defn ^:export ^:dev/after-load init []
   (rf/dispatch [:init-local-storage])
+  (rf/dispatch [:init-db])
   (rdomc/render @root [simple-component]))

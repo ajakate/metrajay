@@ -4,6 +4,7 @@
    [re-frame.core :as rf]
    [superstructor.re-frame.fetch-fx]
    [metrajay.db :as appdb]
+   [clojure.string :as str]
    [akiroz.re-frame.storage :refer [persist-db-keys]]))
 
 
@@ -11,11 +12,18 @@
   [event-id handler]
   (rf/reg-event-fx
    event-id
-   [(persist-db-keys :metrajay-app [:schedule])]
+   [(persist-db-keys :metrajay-app [:last_updated :db_version])]
    (fn [{:keys [db]} event-vec]
      {:db (handler db event-vec)})))
 
 (persisted-reg-event-db :init-local-storage (fn [db] db))
+
+(rf/reg-event-fx
+ :init-db
+ (fn [_ [_ _]]
+   (appdb/init-db)
+   {}))
+
 
 (rf/reg-event-fx
  :check-for-update
@@ -68,10 +76,19 @@
 (rf/reg-event-fx
  :load-csvs
  (fn [_ [_ table-csvs]]
-   (doseq [[table-name csv] table-csvs]
-     (js/console.log "Creating table" table-name)
-     (js/alasql (str "CREATE TABLE  " table-name))
-     (js/alasql (str "INSERT INTO " table-name " SELECT * FROM CSV(?,{headers:true})") csv))
+   (js/console.log "Loading CSVs into DB sequentially...")
+   (let [chain
+         (reduce (fn [prev [table-name csv]]
+                   (.then prev
+                          (fn [_]
+                            (-> (.promise js/alasql (str "DELETE FROM " table-name " WHERE 1"))
+                                (.then (fn [_] (.promise js/alasql (str "INSERT INTO " table-name
+                                                                        " SELECT " (str/join ", " (get appdb/table-fields table-name))  " FROM CSV(?,{headers:true})") csv)))))))
+                 (.resolve js/Promise)
+                 table-csvs)]
+     (.then chain
+            (fn [_]
+              (js/console.log "All tables loaded and persisted to IndexedDB."))))
    {}))
 
 
