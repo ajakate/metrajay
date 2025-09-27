@@ -20,6 +20,7 @@ jobs:
       - name: Cache Buster
         run: |
           sed -i "s/__DEPLOY_RUN_NUMBER__/${GITHUB_RUN_NUMBER}/g" ./public/index.html
+          cat ./public/index.html
       - name: Install and Build
         run: |
           npm install
