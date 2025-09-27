@@ -15,13 +15,16 @@ jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout 🛎️
+      - name: Checkout
         uses: actions/checkout@v4
+      - name: Cache Buster
+        run: |
+          sed -i "s/__DEPLOY_RUN_NUMBER__/${GITHUB_RUN_NUMBER}/g" index.html
       - name: Install and Build
         run: |
           npm install
           npm run build
-      - name: Deploy 🚀
+      - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: public

@@ -16,8 +16,10 @@
    [:button.nes-btn.is-warning {:on-click #(rf/dispatch [:download-schedule])} "download schedule"]])
 
 (defn header []
-  [:div.bg-red-500
-   [:h1 "metrajay"]])
+  [:div.bg-red-500.flex-col.justify-between
+   [:h1 "metrajay"]
+   [:div.flex.flex-row-reverse
+    [:p "last updated: "]]])
 
 (defn root-component []
   [:div.flex.flex-col.w-full.max-w-lg.mx-auto
