@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Cache Buster
         run: |
-          sed -i "s/__DEPLOY_RUN_NUMBER__/${GITHUB_RUN_NUMBER}/g" index.html
+          sed -i "s/__DEPLOY_RUN_NUMBER__/${GITHUB_RUN_NUMBER}/g" ./public/index.html
       - name: Install and Build
         run: |
           npm install
