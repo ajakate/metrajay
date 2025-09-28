@@ -8,20 +8,20 @@
    [akiroz.re-frame.storage :refer [persist-db-keys]]))
 
 
-(def sub-states
-  [:page
-   :available-stations
-   ])
-
-(doseq [event sub-states]
-  (rf/reg-event-db
-   event
-   (fn [db [_ val]]
-     (assoc db event val)))
-  (rf/reg-sub
-   event
-   (fn [db _]
-     (-> db event))))
+(rf/reg-fx
+ :alasql
+ (fn [{:keys [query on-success on-failure]}]
+   (let [p (.promise js/alasql query)]
+     (.then p
+            (fn [result]
+              (when on-success
+                (rf/dispatch
+                 (conj on-success (js->clj result :keywordize-keys true))))))
+     (.catch p
+             (fn [error]
+               (when on-failure
+                 (rf/dispatch
+                  (conj on-failure error))))))))
 
 (defn persisted-reg-event-db
   [event-id handler]
@@ -151,15 +151,46 @@
    {}))
 
 (rf/reg-event-fx
+ :load-all-stops
+ (fn [{:keys [db]} [_ _]]
+   {:alasql {:query "SELECT * FROM stops"
+             :on-success [:set-available-stations]
+             :on-failure [:bad-fetch-result]}}))
+
+(rf/reg-event-fx
+ :load-all-stops
+ (fn [{:keys [db]} [_ _]]
+   {:alasql {:query "SELECT * FROM stops"
+             :on-success [:set-available-stations]
+             :on-failure [:bad-fetch-result]}}))
+
+(rf/reg-event-fx
+ :get-second-station-list
+ (fn [{:keys [db]} [_ {:keys [station_id station_name]}]]
+   {:alasql {:query "SELECT * FROM stops"
+             :on-success [:set-available-stations]
+             :on-failure [:bad-fetch-result]}}))
+
+(rf/reg-event-fx
  :bad-fetch-result
  (fn [{:keys [db]} [_ error]]
    {:db (assoc db :error error)}))
+
+(defn find-station-by-name [stops name]
+  (first (filter #(= (:stop_name %) name) stops)))
+
+(rf/reg-event-fx
+ :set-station-1
+ (fn [{:keys [db]} [_ station-name]]
+   (let [station-obj (find-station-by-name (:available-stations db) station-name)]
+     {:db (assoc db :station-1 station-obj)
+      :dispatch [:get-second-station-list station-obj]})))
 
 (persisted-reg-event-db
  :update-db-version
  (fn [db [_ version]]
    (assoc db :db-version version)))
-
+ 
 (persisted-reg-event-db
  :update-last-updated
  (fn [db [_ _]]
@@ -170,3 +201,15 @@
  (fn [db [_ val]]
    (assoc db :update-string val)))
 
+(rf/reg-event-db
+ :set-available-stations
+ (fn [db [_ val]]
+   (assoc db :available-stations val)))
+
+
+
+;; Subscriptions
+(rf/reg-sub
+ :available-stations
+ (fn [db _]
+   (get db :available-stations [])))
