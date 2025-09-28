@@ -39,19 +39,39 @@ async function loadCsv(tableName, csvText, updateIndexedDB) {
     }
 }
 
-async function loadCsvs(tableNamesAndCsvs, updateIndexedDB) {
-    console.log('Calling loadCsvs with args:', tableNamesAndCsvs, updateIndexedDB);
+async function insertTable(tableName, csvText, updateIndexedDB, conn, duckdb) {
+    console.log('Calling insertTable with args:', tableName, csvText);
+
+    const filename = `/tmp/${tableName}.csv`;
+    await duckdb.registerFileText(filename, csvText);
+
+    const fullQuery = `CREATE OR REPLACE TABLE ${tableName} AS SELECT * FROM read_csv_auto('${filename}')`;
+    console.log('Executing query', fullQuery);
+    await conn.query(fullQuery);
+
+    if (updateIndexedDB) {
+        await set(tableName, csvText);
+    }
+}
+
+function cleanCsvText(csvText) {
+  return csvText
+    // remove spaces around commas
+    .replace(/\s*,\s*/g, ',')
+    // remove spaces around newlines
+    .replace(/\s*\n\s*/g, '\n')
+    // trim start/end of whole file
+    .trim();
+}
+
+async function loadCsvs(tableNamesAndCsvs) {
+    console.log('Calling loadCsvs with args:', tableNamesAndCsvs);
     const conn = window.dbConnection;
     const duckdb = window.DuckDB;
 
     for (const [tableName, csvText] of tableNamesAndCsvs) {
-        console.log('Calling loadCsv with args:', tableName, csvText, updateIndexedDB);
-        const filename = `/tmp/${tableName}.csv`;
-        await duckdb.registerFileText(filename, csvText);
-        await conn.query(`CREATE OR REPLACE TABLE ${tableName} AS SELECT * FROM read_csv_auto('${filename}')`);
-        if (updateIndexedDB) {
-            await set(tableName, csvText);
-        }
+        const cleanedCsvText = cleanCsvText(csvText);
+        await insertTable(tableName, cleanedCsvText, true, conn, duckdb)
     }
 }
 
@@ -61,10 +81,8 @@ async function loadCsvsFromIndexedDB(tableNames) {
     const duckdb = window.DuckDB;
 
     for (const tableName of tableNames) {
-        const filename = `/tmp/${tableName}.csv`;
         const csvText = await get(tableName);
-        await duckdb.registerFileText(filename, csvText);
-        await conn.query(`CREATE OR REPLACE TABLE ${tableName} AS SELECT * FROM read_csv_auto('${filename}')`);
+        await insertTable(tableName, csvText, false, conn, duckdb)
     }
 }
 
