@@ -74,5 +74,4 @@
 (defn ^:export ^:dev/after-load init []
   (rf/dispatch-sync [:init-local-storage])
   (rf/dispatch-sync [:init-db])
-  (rf/dispatch [:download-schedule])
   (rdomc/render @root [root-component]))

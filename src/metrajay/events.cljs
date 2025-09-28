@@ -8,22 +8,6 @@
    [metrajay.duckdb :as duck]
    [akiroz.re-frame.storage :refer [persist-db-keys]]))
 
-
-(rf/reg-fx
- :alasql
- (fn [{:keys [query on-success on-failure]}]
-   (let [p (.promise js/alasql query)]
-     (.then p
-            (fn [result]
-              (when on-success
-                (rf/dispatch
-                 (conj on-success (js->clj result :keywordize-keys true))))))
-     (.catch p
-             (fn [error]
-               (when on-failure
-                 (rf/dispatch
-                  (conj on-failure error))))))))
-
 (rf/reg-fx
  :duckdb
  (fn [{:keys [query on-success on-failure]}]
@@ -46,15 +30,47 @@
 (rf/reg-event-fx
  :init-db
  (fn [{:keys [db]} [_ _]]
-   (let [raw-version (:db-version db)
-         version (if (nil? raw-version) 0 raw-version)
-         reset-commands (appdb/db-reset-commands version)
-         full-commands (-> reset-commands
-                           (conj #(rf/dispatch [:update-db-version version]))
-                           (conj #(rf/dispatch [:check-for-update])))]
-     (appdb/run-commands full-commands)
+   (let [loaded (exists? (.-duckdbLoaded js/window))]
+     (js/console.log "is it loaded..." loaded)
+     (if (= true loaded)
+       {:dispatch [:check-db]}
+       (do
+         (js/setTimeout #(rf/dispatch [:init-db]) 500)
+         {})
+       )
+     )))
+
+(rf/reg-event-fx
+ :load-db-from-indexeddb
+ (fn [{:keys [db]} [_ _]]
+   (let [table-names (keys duck/table-fields)]
+     (-> ((duck/load-csvs-from-indexeddb-func) (clj->js table-names))
+         (.then #(rf/dispatch [:check-for-update])))
      {})))
 
+(rf/reg-event-fx
+ :check-db
+ (fn [{:keys [db]} _]
+   (let [table-names (keys duck/table-fields)]
+     (-> ((duck/check-if-kv-exists-func) (clj->js table-names))
+         (.then (fn [result]
+                  (if
+                   (= true result)
+                    (rf/dispatch [:load-db-from-indexeddb])
+                    (rf/dispatch [:download-schedule])))))
+     {})))
+
+
+(rf/reg-event-fx
+ :increment-db-and-load-csvs
+ (fn [{:keys [db]} [_ table-csvs]]
+   (let [new-db-version (inc (:db-version db))
+         commands (appdb/db-reset-commands new-db-version)
+         full-commands (-> commands
+                           (conj #(rf/dispatch [:update-db-version new-db-version]))
+                           (conj #(rf/dispatch [:load-new-db table-csvs])))]
+     (appdb/run-commands full-commands)
+     {})))
 
 (rf/reg-event-fx
  :check-for-update
@@ -125,37 +141,17 @@
      (appdb/run-commands full-commands)
      {})))
 
-
-(defn map-entry-to-command [table-csv]
-  (let [[table-name csv] table-csv]
-    (js/console.log "Loading " table-name " into DB...")
-    #(js/alasql (str "INSERT INTO " table-name
-                     " SELECT " (str/join ", " (get appdb/table-fields table-name))  " FROM CSV(?,{headers:true})") csv)))
-
-
-(defn load-csv-from-string [[table-name csv-text]]
-  (let [conn (duck/get-db-conn)
-        duckdb (duck/get-duckdb)
-        filename (str "/tmp/" table-name ".csv")
-        ]
-    (js/console.log "connecting " conn " into DB...")
-    #(.then
-     (.registerFileText duckdb filename csv-text) 
-     (fn [] 
-       (.query conn (str "CREATE OR REPLACE TABLE " table-name " AS SELECT * FROM read_csv_auto('" filename "')"))))))
+(defn load-csv-commands [[table-name csv-text]]
+  #((duck/load-csv-func) table-name csv-text true))
 
 
 (rf/reg-event-fx
  :load-new-db
  (fn [{:keys [db]} [_ table-csvs]]
    (js/console.log "Loading CSVs into DB sequentially...")
-   (let [commands (mapv load-csv-from-string table-csvs)
-         full-commands (-> commands
-                           (conj #(js/console.log "All tables loaded and persisted to IndexedDB."))
-                           (conj #(rf/dispatch [:update-last-updated]))
-                           (conj #(rf/dispatch [:remove-old-dbs])))]
-     (appdb/run-commands full-commands)
-     {})))
+   (-> ((duck/load-csvs-func) (clj->js table-csvs) true)
+       (.then #(js/console.log "All tables loaded and persisted to IndexedDB.")))
+   {}))
 
 (rf/reg-event-fx
  :remove-old-dbs
@@ -179,13 +175,6 @@
    {:duckdb {:query "SELECT stop_id, stop_name FROM stops"
              :on-success [:set-available-stations]
              :on-failure [:bad-fetch-result]}}))
-
-;; (rf/reg-event-fx
-;;  :load-all-stops
-;;  (fn [{:keys [db]} [_ _]]
-;;    {:alasql {:query "SELECT * FROM stops"
-;;              :on-success [:set-available-stations]
-;;              :on-failure [:bad-fetch-result]}}))
 
 (rf/reg-event-fx
  :get-second-station-list
