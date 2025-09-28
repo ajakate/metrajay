@@ -51,6 +51,9 @@
   [:div.nes-container.with-title.is-centered.mt-3.mx-3
    [:p.title "Search Route"]
    [:button.nes-btn.is-primary
+    {:on-click #(rf/dispatch [:download-schedule])}
+    "Schedule"]
+   [:button.nes-btn.is-primary
     {:on-click #(rf/dispatch [:load-all-stops])}
     "Search"]
 

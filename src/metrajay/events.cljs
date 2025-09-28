@@ -33,7 +33,7 @@
      (if (= true loaded)
        {:dispatch [:check-db]}
        (do
-         (js/setTimeout #(rf/dispatch [:init-db]) 500)
+         (js/setTimeout #(rf/dispatch [:init-db]) 200)
          {})))))
 
 (rf/reg-event-fx
@@ -120,7 +120,7 @@
  :load-new-db
  (fn [{:keys [db]} [_ table-csvs]]
    (js/console.log "Loading CSVs into DB sequentially...")
-   (-> ((duck/load-csvs-func) (clj->js table-csvs) true)
+   (-> ((duck/load-csvs-func) (clj->js table-csvs))
        (.then #(js/console.log "All tables loaded and persisted to IndexedDB.")))
    {}))
 
@@ -134,7 +134,7 @@
 (rf/reg-event-fx
  :get-second-station-list
  (fn [{:keys [db]} [_ {:keys [station_id station_name]}]]
-   {:alasql {:query "SELECT * FROM stops"
+   {:duckdb {:query "SELECT * FROM stops"
              :on-success [:set-available-stations]
              :on-failure [:bad-fetch-result]}}))
 
@@ -167,7 +167,6 @@
  :set-available-stations
  (fn [db [_ val]]
    (assoc db :available-stations val)))
-
 
 ;; Subscriptions
 (rf/reg-sub
