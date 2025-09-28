@@ -70,5 +70,4 @@ and stop_id != '{{stop_id}}'
 
 
 (defn second-stations-query [first-station-id]
-  (js/console.log "poopoo: " first-station-id)
   (render-template second-stations-sql {:stop_id first-station-id}))

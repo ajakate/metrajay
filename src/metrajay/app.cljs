@@ -16,7 +16,7 @@
    [:br]
    [:button.nes-btn.is-warning {:on-click #(rf/dispatch [:download-schedule])} "download schedule"]])
 
-(defn searchable-dropdown [subscription-keyword title]
+(defn searchable-dropdown [subscription-keyword title set-station-event]
   (let [query (r/atom "")
         open? (r/atom false)]
     (fn []
@@ -44,7 +44,7 @@
                {:on-click (fn []
                             (reset! query opt)
                             (reset! open? false)
-                            (rf/dispatch [:set-station-1 opt]))}
+                            (rf/dispatch [set-station-event opt]))}
                opt])])]))))
 
 (defn search-page []
@@ -57,8 +57,8 @@
     {:on-click #(rf/dispatch [:load-all-stops])}
     "Search"]
 
-   [searchable-dropdown :available-stations "First Station"]
-   [searchable-dropdown :available-stations-2 "Second Station"]])
+   [searchable-dropdown :available-stations "First Station" :set-station-1]
+   [searchable-dropdown :available-stations-2 "Second Station" :set-station-2]])
 
 (defn query-explorer []
   (let [query (r/atom "select * from stops limit 10")] ; start with default SQL

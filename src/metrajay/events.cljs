@@ -155,6 +155,12 @@
      {:db (assoc db :station-1 station-obj)
       :dispatch [:get-second-station-list station-obj]})))
 
+(rf/reg-event-fx
+ :set-station-2
+ (fn [{:keys [db]} [_ station-name]]
+   (let [station-obj (find-station-by-name (:available-stations-2 db) station-name)]
+     {:db (assoc db :station-2 station-obj)})))
+
 (persisted-reg-event-db
  :update-last-updated
  (fn [db [_ _]]
