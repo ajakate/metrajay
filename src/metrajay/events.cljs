@@ -127,16 +127,18 @@
 (rf/reg-event-fx
  :load-all-stops
  (fn [{:keys [db]} [_ _]]
-   {:duckdb {:query "SELECT stop_id, stop_name FROM stops"
+   {:duckdb {:query duck/all-stations-query
              :on-success [:set-available-stations]
              :on-failure [:bad-fetch-result]}}))
 
 (rf/reg-event-fx
  :get-second-station-list
- (fn [{:keys [db]} [_ {:keys [station_id station_name]}]]
-   {:duckdb {:query "SELECT * FROM stops"
-             :on-success [:set-available-stations]
-             :on-failure [:bad-fetch-result]}}))
+ (fn [{:keys [db]} [_ station_obj]]
+   (let [station-id (:stop_id station_obj)
+         query (duck/second-stations-query station-id)] 
+     {:duckdb {:query query
+               :on-success [:set-available-stations-2]
+               :on-failure [:bad-fetch-result]}})))
 
 (rf/reg-event-fx
  :bad-fetch-result
@@ -168,8 +170,36 @@
  (fn [db [_ val]]
    (assoc db :available-stations val)))
 
+(rf/reg-event-db
+ :set-available-stations-2
+ (fn [db [_ val]]
+   (assoc db :available-stations-2 val)))
+
+(rf/reg-event-db
+ :set-sample-query
+ (fn [db [_ val]]
+   (assoc db :sample-query val)))
+
+(rf/reg-event-fx
+ :run-sample-query
+ (fn [{:keys [db]} [_ query]]
+   {:duckdb {:query query
+             :on-success [:set-sample-query]
+             :on-failure [:bad-fetch-result]}}))
+
 ;; Subscriptions
 (rf/reg-sub
  :available-stations
  (fn [db _]
    (get db :available-stations [])))
+
+(rf/reg-sub
+ :available-stations-2
+ (fn [db _]
+   (get db :available-stations-2 [])))
+
+(rf/reg-sub
+ :sample-query
+ (fn [db _]
+   (get db :sample-query [])))
+

@@ -58,7 +58,41 @@
     "Search"]
 
    [searchable-dropdown :available-stations "First Station"]
-   [searchable-dropdown :available-stations "Second Station"]])
+   [searchable-dropdown :available-stations-2 "Second Station"]])
+
+(defn query-explorer []
+  (let [query (r/atom "select * from stops limit 10")] ; start with default SQL
+    (fn []
+      (let [sample-query (rf/subscribe [:sample-query])]
+        [:div.flex.flex-col.space-y-4
+
+         ;; Controls
+         [:div.flex.flex-col.space-y-2
+          [:textarea.nes-textarea
+           {:value @query
+            :rows 5
+            :on-change #(reset! query (.. % -target -value))}]
+          [:button.nes-btn.is-primary
+           {:on-click #(rf/dispatch [:run-sample-query @query])}
+           "Run"]]
+
+         ;; Results
+         [:div
+          [:p "Results:"]
+          (when (seq @sample-query)
+            [:table.nes-table.is-bordered.is-centered.w-full.overflow-x-auto
+             [:thead
+              [:tr
+               (for [col (keys (first @sample-query))]
+                 ^{:key col}
+                 [:th (name col)])]]
+             [:tbody
+              (for [row @sample-query]
+                ^{:key (hash row)}
+                [:tr
+                 (for [col (keys row)]
+                   ^{:key col}
+                   [:td (str (get row col))])])]])]]))))
 
 (defn header []
   [:div.bg-red-500.flex.justify-between
@@ -70,7 +104,11 @@
   [:div.flex.flex-col.w-full.max-w-lg.mx-auto
    [header]
    [:<>
-    [search-page]]])
+    ;; [query-explorer]
+    [search-page]
+    
+    
+    ]])
 
 (defonce root (delay (rdomc/create-root (.getElementById js/document "root"))))
 

@@ -1,4 +1,7 @@
-(ns metrajay.duckdb)
+(ns metrajay.duckdb
+  (:require
+   [clojure.string :as str]))
+
 
 (def table-map
   {"calendar_dates.txt"  "calendar_dates"
@@ -16,6 +19,32 @@
    "stops" ["stop_id" "stop_name"]
    "trips" ["route_id" "service_id" "trip_id" "trip_headsign" "direction_id"]})
 
+(defn render-template
+  "Replace {{var}} placeholders in `template` with values from `params`."
+  [template params]
+  (str/replace
+   template
+   #"\{\{(\w+)\}\}"
+   (fn [[_ k]]
+     (str (get params (keyword k) "")))))
+
+(def all-stations-query
+  "select stop_id,stop_name from stops")
+
+(def second-stations-sql
+  "
+with distinct_trips as (
+  select distinct trip_id from stop_times
+  where stop_id = '{{stop_id}}'
+),
+stop_ids as (
+ select distinct stop_id from stop_times where trip_id in (select * from distinct_trips)
+)
+select stop_id,stop_name
+from stops where stop_id in
+(select * from stop_ids)
+and stop_id != '{{stop_id}}'
+   ")
 
 (defn get-db-conn []
   (.-dbConnection js/window))
@@ -38,3 +67,8 @@
          (let [rows (.toArray res)
                json-rows (.map rows (fn [x] (.toJSON x)))]
            (js->clj json-rows {:keywordize-keys true})))))))
+
+
+(defn second-stations-query [first-station-id]
+  (js/console.log "poopoo: " first-station-id)
+  (render-template second-stations-sql {:stop_id first-station-id}))
