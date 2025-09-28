@@ -3,8 +3,6 @@
    ["jszip" :as JSZip]
    [re-frame.core :as rf]
    [superstructor.re-frame.fetch-fx]
-   [metrajay.db :as appdb]
-   [clojure.string :as str]
    [metrajay.duckdb :as duck]
    [akiroz.re-frame.storage :refer [persist-db-keys]]))
 
@@ -21,7 +19,7 @@
   [event-id handler]
   (rf/reg-event-fx
    event-id
-   [(persist-db-keys :metrajay-app [:update-string :db-version :last-updated])]
+   [(persist-db-keys :metrajay-app [:update-string :last-updated])]
    (fn [{:keys [db]} event-vec]
      {:db (handler db event-vec)})))
 
@@ -36,9 +34,7 @@
        {:dispatch [:check-db]}
        (do
          (js/setTimeout #(rf/dispatch [:init-db]) 500)
-         {})
-       )
-     )))
+         {})))))
 
 (rf/reg-event-fx
  :load-db-from-indexeddb
@@ -60,17 +56,6 @@
                     (rf/dispatch [:download-schedule])))))
      {})))
 
-
-(rf/reg-event-fx
- :increment-db-and-load-csvs
- (fn [{:keys [db]} [_ table-csvs]]
-   (let [new-db-version (inc (:db-version db))
-         commands (appdb/db-reset-commands new-db-version)
-         full-commands (-> commands
-                           (conj #(rf/dispatch [:update-db-version new-db-version]))
-                           (conj #(rf/dispatch [:load-new-db table-csvs])))]
-     (appdb/run-commands full-commands)
-     {})))
 
 (rf/reg-event-fx
  :check-for-update
@@ -123,26 +108,12 @@
      (-> (.loadAsync zip body)
          (.then (fn [unzipped]
                   (js/Promise.all
-                   (for [[filename _] appdb/table-map]
+                   (for [[filename _] duck/table-map]
                      (.. unzipped (file filename) (async "string"))))))
          (.then (fn [texts]
-                  (rf/dispatch [:increment-db-and-load-csvs
-                                (map vector (vals appdb/table-map) texts)])))))
+                  (rf/dispatch [:load-new-db
+                                (map vector (vals duck/table-map) texts)])))))
    {}))
-
-(rf/reg-event-fx
- :increment-db-and-load-csvs
- (fn [{:keys [db]} [_ table-csvs]]
-   (let [new-db-version (inc (:db-version db))
-         commands (appdb/db-reset-commands new-db-version)
-         full-commands (-> commands
-                           (conj #(rf/dispatch [:update-db-version new-db-version]))
-                           (conj #(rf/dispatch [:load-new-db table-csvs])))]
-     (appdb/run-commands full-commands)
-     {})))
-
-(defn load-csv-commands [[table-name csv-text]]
-  #((duck/load-csv-func) table-name csv-text true))
 
 
 (rf/reg-event-fx
@@ -151,22 +122,6 @@
    (js/console.log "Loading CSVs into DB sequentially...")
    (-> ((duck/load-csvs-func) (clj->js table-csvs) true)
        (.then #(js/console.log "All tables loaded and persisted to IndexedDB.")))
-   {}))
-
-(rf/reg-event-fx
- :remove-old-dbs
- (fn [{:keys [db]} _]
-   (js/console.log "Removing old DBs...")
-   (-> (js/window.indexedDB.databases)
-       (.then (fn [dbs]
-                (doseq [odb dbs]
-                  (let [db-name (.-name odb)
-                        current-name (str "metrajay_v" (:db-version db))]
-                    (when (and
-                           (re-find #"metrajay_v[0-9]+$" db-name)
-                           (not= db-name current-name))
-                      (js/console.log "Removing " db-name "...")
-                      (js/window.indexedDB.deleteDatabase db-name)))))))
    {}))
 
 (rf/reg-event-fx
@@ -199,11 +154,6 @@
       :dispatch [:get-second-station-list station-obj]})))
 
 (persisted-reg-event-db
- :update-db-version
- (fn [db [_ version]]
-   (assoc db :db-version version)))
- 
-(persisted-reg-event-db
  :update-last-updated
  (fn [db [_ _]]
    (assoc db :last-updated (js/Date.))))
@@ -217,7 +167,6 @@
  :set-available-stations
  (fn [db [_ val]]
    (assoc db :available-stations val)))
-
 
 
 ;; Subscriptions
