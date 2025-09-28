@@ -17,6 +17,7 @@
  :builds
  {:app {:target :browser
         :output-dir "public/js/"
+        :closure-defines {metrajay.env/API_URL #shadow/env "API_URL"}
         :modules {:main {:init-fn metrajay.app/init}}
         :devtools {:preloads [re-frisk.preload]
                    :after-load ajakate.seekwence.core/mount-root}

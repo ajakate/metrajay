@@ -1,6 +1,7 @@
 (ns metrajay.app
   (:require [reagent.core :as r]
             [metrajay.events :as events]
+            [metrajay.env]
             [reagent.dom.client :as rdomc]
             [clojure.string :as str]
             [re-frame.core :as rf]))
@@ -114,5 +115,5 @@
 
 (defn ^:export ^:dev/after-load init []
   (rf/dispatch-sync [:init-local-storage])
-  (rf/dispatch-sync [:init-db])
+  (rf/dispatch-sync [:init-db]) 
   (rdomc/render @root [root-component]))

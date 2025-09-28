@@ -4,6 +4,7 @@
    [re-frame.core :as rf]
    [superstructor.re-frame.fetch-fx]
    [metrajay.duckdb :as duck]
+   [metrajay.env :as env]
    [akiroz.re-frame.storage :refer [persist-db-keys]]))
 
 (rf/reg-fx
@@ -61,7 +62,7 @@
  :check-for-update
  (fn [{:keys [db]} event-vec]
    {:fetch {:method :get
-            :url "http://localhost:8787?route=update"
+            :url (str env/API_URL "?route=update")
             :mode :cors
             :credentials :omit
             :response-content-types {#"text/plain" :text}
@@ -72,7 +73,7 @@
  :download-schedule
  (fn [{:keys [db]} event-vec]
    {:fetch {:method :get
-            :url "http://localhost:8787?route=schedule"
+            :url (str env/API_URL "?route=schedule")
             :mode :cors
             :credentials :omit
             :response-content-types {#"application/zip" :array-buffer}

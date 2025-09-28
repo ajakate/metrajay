@@ -2,7 +2,7 @@
     "name": "metrajay",
     "version": "0.0.1",
     "scripts": {
-        "watch:cljs": "shadow-cljs watch app",
+        "watch:cljs": "API_URL=http://localhost:8787 shadow-cljs watch app",
         "watch:scss": "sass --watch src/app.scss public/css/main.css",
         "dev": "npm-run-all --parallel watch:*",
         "repl": "shadow-cljs repl app",

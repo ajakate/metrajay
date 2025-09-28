@@ -8,12 +8,11 @@ on:
 permissions:
   contents: write
 
-env:
-  VITE_API_URL: ${{ secrets.VITE_API_URL }}
-
 jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
+    env:
+      API_URL: ${{ secrets.API_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
