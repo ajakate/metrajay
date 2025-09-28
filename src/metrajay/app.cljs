@@ -24,6 +24,7 @@
             options (map :stop_name @available-stations)]
         [:div.mt-3        
          [:p title]
+         [:p (first @available-stations)]
          [:input.nes-input.w-full
           {:type "text"
            :placeholder "Search..."
@@ -73,4 +74,5 @@
 (defn ^:export ^:dev/after-load init []
   (rf/dispatch-sync [:init-local-storage])
   (rf/dispatch-sync [:init-db])
+  (rf/dispatch [:download-schedule])
   (rdomc/render @root [root-component]))

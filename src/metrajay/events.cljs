@@ -5,6 +5,7 @@
    [superstructor.re-frame.fetch-fx]
    [metrajay.db :as appdb]
    [clojure.string :as str]
+   [metrajay.duckdb :as duck]
    [akiroz.re-frame.storage :refer [persist-db-keys]]))
 
 
@@ -22,6 +23,15 @@
                (when on-failure
                  (rf/dispatch
                   (conj on-failure error))))))))
+
+(rf/reg-fx
+ :duckdb
+ (fn [{:keys [query on-success on-failure]}]
+   (js/console.log "duckdb query: " query)
+   (-> (duck/query-duckdb query)
+       (.then #(when on-success (rf/dispatch (conj on-success %))))
+       (.catch #(when on-failure (rf/dispatch (conj on-failure %)))))))
+
 
 (defn persisted-reg-event-db
   [event-id handler]
@@ -122,11 +132,24 @@
     #(js/alasql (str "INSERT INTO " table-name
                      " SELECT " (str/join ", " (get appdb/table-fields table-name))  " FROM CSV(?,{headers:true})") csv)))
 
+
+(defn load-csv-from-string [[table-name csv-text]]
+  (let [conn (duck/get-db-conn)
+        duckdb (duck/get-duckdb)
+        filename (str "/tmp/" table-name ".csv")
+        ]
+    (js/console.log "connecting " conn " into DB...")
+    #(.then
+     (.registerFileText duckdb filename csv-text) 
+     (fn [] 
+       (.query conn (str "CREATE OR REPLACE TABLE " table-name " AS SELECT * FROM read_csv_auto('" filename "')"))))))
+
+
 (rf/reg-event-fx
  :load-new-db
  (fn [{:keys [db]} [_ table-csvs]]
    (js/console.log "Loading CSVs into DB sequentially...")
-   (let [commands (mapv map-entry-to-command table-csvs)
+   (let [commands (mapv load-csv-from-string table-csvs)
          full-commands (-> commands
                            (conj #(js/console.log "All tables loaded and persisted to IndexedDB."))
                            (conj #(rf/dispatch [:update-last-updated]))
@@ -153,16 +176,16 @@
 (rf/reg-event-fx
  :load-all-stops
  (fn [{:keys [db]} [_ _]]
-   {:alasql {:query "SELECT * FROM stops"
+   {:duckdb {:query "SELECT stop_id, stop_name FROM stops"
              :on-success [:set-available-stations]
              :on-failure [:bad-fetch-result]}}))
 
-(rf/reg-event-fx
- :load-all-stops
- (fn [{:keys [db]} [_ _]]
-   {:alasql {:query "SELECT * FROM stops"
-             :on-success [:set-available-stations]
-             :on-failure [:bad-fetch-result]}}))
+;; (rf/reg-event-fx
+;;  :load-all-stops
+;;  (fn [{:keys [db]} [_ _]]
+;;    {:alasql {:query "SELECT * FROM stops"
+;;              :on-success [:set-available-stations]
+;;              :on-failure [:bad-fetch-result]}}))
 
 (rf/reg-event-fx
  :get-second-station-list
