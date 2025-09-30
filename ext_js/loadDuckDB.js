@@ -1,7 +1,7 @@
 import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.30.0/+esm";
 import { get, set } from 'https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm';
 
-console.log('in le script')
+console.log('Loading DuckDB in external JS file...')
 
 async function instantiateDuckDB(duckdb) {
     const CDN_BUNDLES = duckdb.getJsDelivrBundles(),
