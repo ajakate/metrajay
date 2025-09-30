@@ -6,3 +6,10 @@ public/js
 public/css
 .calva
 .sass-cache
+
+
+# temp duckdb files
+schedule
+cleaned_schedule
+playground.sql
+*.duckdb

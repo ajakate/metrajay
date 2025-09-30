@@ -4,6 +4,7 @@
    [re-frame.core :as rf]
    [superstructor.re-frame.fetch-fx]
    [metrajay.duckdb :as duck]
+   [clojure.string :as str]
    [metrajay.env :as env]
    [akiroz.re-frame.storage :refer [persist-db-keys]]))
 
@@ -30,7 +31,7 @@
  :init-db
  (fn [{:keys [db]} [_ _]]
    (let [loaded (exists? (.-duckdbLoaded js/window))]
-     (js/console.log "is it loaded..." loaded)
+     (js/console.log "Checking if DuckDB is loaded..." loaded)
      (if (= true loaded)
        {:dispatch [:check-db]}
        (do
@@ -92,7 +93,7 @@
    (let [body (:body response)
          current-string (:update-string db)]
      (if (= body current-string)
-       {:dispatch [:update-last-updated]}
+       {:fx [[:disptach [:update-last-updated]] [:dispatch [:load-all-stops]]]}
        {:fx [[:disptach [:update-update-string body]] [:dispatch [:download-schedule]]]}))))
 
 (rf/reg-event-db
@@ -122,14 +123,15 @@
  (fn [{:keys [db]} [_ table-csvs]]
    (js/console.log "Loading CSVs into DB sequentially...")
    (-> ((duck/load-csvs-func) (clj->js table-csvs))
-       (.then #(js/console.log "All tables loaded and persisted to IndexedDB.")))
+       (.then #(js/console.log "All tables loaded and persisted to IndexedDB."))
+       (.then (rf/dispatch [:load-all-stops])))
    {}))
 
 (rf/reg-event-fx
  :load-all-stops
  (fn [{:keys [db]} [_ _]]
    {:duckdb {:query duck/all-stations-query
-             :on-success [:set-available-stations]
+             :on-success [:set-all-stops]
              :on-failure [:bad-fetch-result]}}))
 
 (rf/reg-event-fx
@@ -142,6 +144,16 @@
                :on-failure [:bad-fetch-result]}})))
 
 (rf/reg-event-fx
+ :get-schedule
+ (fn [{:keys [db]} [_ _]]
+   (let [station1 (-> db :station-1 :stop_id)
+         station2 (-> db :station-2 :stop_id)
+         query (duck/schedule-query station1 station2)]
+     {:duckdb {:query query
+               :on-success [:set-schedule]
+               :on-failure [:bad-fetch-result]}})))
+
+(rf/reg-event-fx
  :bad-fetch-result
  (fn [{:keys [db]} [_ error]]
    {:db (assoc db :error error)}))
@@ -149,18 +161,17 @@
 (defn find-station-by-name [stops name]
   (first (filter #(= (:stop_name %) name) stops)))
 
+
 (rf/reg-event-fx
  :set-station-1
  (fn [{:keys [db]} [_ station-name]]
-   (let [station-obj (find-station-by-name (:available-stations db) station-name)]
-     {:db (assoc db :station-1 station-obj)
-      :dispatch [:get-second-station-list station-obj]})))
+   {:db (assoc db :station-1 station-name)
+    :dispatch [:get-second-station-list]}))
 
 (rf/reg-event-fx
  :set-station-2
  (fn [{:keys [db]} [_ station-name]]
-   (let [station-obj (find-station-by-name (:available-stations-2 db) station-name)]
-     {:db (assoc db :station-2 station-obj)})))
+   {:db (assoc db :station-2 station-name)}))
 
 (persisted-reg-event-db
  :update-last-updated
@@ -173,9 +184,31 @@
    (assoc db :update-string val)))
 
 (rf/reg-event-db
+ :set-all-stops
+ (fn [db [_ val]]
+   (assoc db :all-stops val)))
+
+(rf/reg-event-db
  :set-available-stations
  (fn [db [_ val]]
    (assoc db :available-stations val)))
+
+(defn timekey [day-group]
+  (let [time-strings (mapv #(get % :time1) day-group)]
+    (str/join ";" time-strings)))
+
+(defn group-schedule [grouped-day]
+  (partition-by timekey grouped-day))
+
+(defn group-day [raw-times] 
+  (partition-by #(:schedule_day %) raw-times))
+
+(rf/reg-event-db
+ :set-schedule
+ (fn [db [_ val]]
+   (let [grouped-day (group-day val)
+         grouped-schedule (group-schedule grouped-day)]
+     (assoc db :schedule grouped-schedule))))
 
 (rf/reg-event-db
  :set-available-stations-2
@@ -194,19 +227,60 @@
              :on-success [:set-sample-query]
              :on-failure [:bad-fetch-result]}}))
 
+
+
+
 ;; Subscriptions
+
+(rf/reg-sub
+ :all-stops
+ (fn [db _]
+   (get db :all-stops [])))
+
 (rf/reg-sub
  :available-stations
- (fn [db _]
-   (get db :available-stations [])))
+ :<- [:all-stops]
+ (fn [all-stops _]
+   (let [stop-names  (mapv #(get % :stop_name) all-stops)
+         distinct-stops (distinct stop-names)
+         sorted (sort distinct-stops)]
+     sorted)))
+
+
+(defn element-in-array [obj arr]
+  (some #(= obj %) arr))
 
 (rf/reg-sub
  :available-stations-2
+ :<- [:all-stops]
+ :<- [:station-1]
+ (fn [[all-stops station-1] _]
+   (let [all-obj-for-station (filter #(= (:stop_name %) station-1) all-stops)
+         all-routes (mapv #(:route_id %) all-obj-for-station)
+         all-stations-for-route (filter #(element-in-array (get % :route_id) all-routes) all-stops)
+         all-names (mapv #(get % :stop_name) all-stations-for-route)
+         distinct-stops (distinct all-names)
+         sorted (sort distinct-stops)]
+     sorted)))
+
+(rf/reg-sub
+ :station-1
  (fn [db _]
-   (get db :available-stations-2 [])))
+   (get db :station-1)))
+
+(rf/reg-sub
+ :station-2
+ (fn [db _]
+   (get db :station-2)))
+
+(rf/reg-sub
+ :can-submit-search
+ :<- [:station-1]
+ :<- [:station-2]
+ (fn [[station-1 station-2] _]
+   (and (seq station-1) (seq station-2))))
 
 (rf/reg-sub
  :sample-query
  (fn [db _]
    (get db :sample-query [])))
-

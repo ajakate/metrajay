@@ -22,10 +22,9 @@
         open? (r/atom false)]
     (fn []
       (let [available-stations (rf/subscribe [subscription-keyword])
-            options (map :stop_name @available-stations)]
+            options @available-stations]
         [:div.mt-3        
          [:p title]
-         [:p (first @available-stations)]
          [:input.nes-input.w-full
           {:type "text"
            :placeholder "Search..."
@@ -52,14 +51,18 @@
   [:div.nes-container.with-title.is-centered.mt-3.mx-3
    [:p.title "Search Route"]
    [:button.nes-btn.is-primary
-    {:on-click #(rf/dispatch [:download-schedule])}
+{:on-click #(rf/dispatch [:download-schedule])}
     "Schedule"]
    [:button.nes-btn.is-primary
     {:on-click #(rf/dispatch [:load-all-stops])}
     "Search"]
 
    [searchable-dropdown :available-stations "First Station" :set-station-1]
-   [searchable-dropdown :available-stations-2 "Second Station" :set-station-2]])
+   [searchable-dropdown :available-stations-2 "Second Station" :set-station-2]
+   (let [can-submit-search (rf/subscribe [:can-submit-search])]
+     [:button.nes-btn.mt-3
+      {:on-click #(rf/dispatch [:get-schedule]) :class (if @can-submit-search "is-primary" "is-disabled")}
+      "Get Schedule"])])
 
 (defn query-explorer []
   (let [query (r/atom "select * from stops limit 10")] ; start with default SQL
@@ -105,7 +108,6 @@
   [:div.flex.flex-col.w-full.max-w-lg.mx-auto
    [header]
    [:<>
-    ;; [query-explorer]
     [search-page]
     
     
@@ -116,4 +118,6 @@
 (defn ^:export ^:dev/after-load init []
   (rf/dispatch-sync [:init-local-storage])
   (rf/dispatch-sync [:init-db]) 
-  (rdomc/render @root [root-component]))
+  (rdomc/render @root [root-component])
+;;   (rdomc/render @root [query-explorer])
+  )
