@@ -260,7 +260,8 @@
          all-stations-for-route (filter #(element-in-array (get % :route_id) all-routes) all-stops)
          all-names (mapv #(get % :stop_name) all-stations-for-route)
          distinct-stops (distinct all-names)
-         sorted (sort distinct-stops)]
+         exclude-self (filter #(not= station-1 %) distinct-stops)
+         sorted (sort exclude-self)]
      sorted)))
 
 (rf/reg-sub
