@@ -48,3 +48,14 @@
                   (recur (first ys) (rest ys))
                   [head cur ys]))]
           (recur rest (conj ranges [rng-start rng-end])))))))
+
+(defn zero-pad [n]
+  (if (< n 10) (str "0" n) (str n)))
+
+(defn format-time [time-str]
+  (let [[h m s] (map #(js/parseInt %) (str/split time-str #":"))
+        h24 (mod h 24)                       ;; wrap 25 → 1
+        period (if (< h24 12) "am" "pm")
+        h12 (let [hh (mod h24 12)]
+              (if (zero? hh) 12 hh))]
+    (str (zero-pad h12) ":" (zero-pad m) " " period)))

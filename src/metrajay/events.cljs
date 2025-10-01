@@ -23,7 +23,7 @@
   [event-id handler]
   (rf/reg-event-fx
    event-id
-   [(persist-db-keys :metrajay-app [:update-string :last-updated])]
+   [(persist-db-keys :metrajay-app [:update-string :last-updated :schedule-stations])]
    (fn [{:keys [db]} event-vec]
      {:db (handler db event-vec)})))
 
@@ -134,7 +134,7 @@
 
 
 (rf/reg-event-fx
- :set-schedule-stations
+ :format-schedule-stations
  (fn [{:keys [db]} [_ _]]
    (let [all-stops (:all-stops db)
          station1-name (:station-1 db)
@@ -161,7 +161,7 @@
          station2 (-> db :schedule-stations second :stop_id)
          query (duck/schedule-query station1 station2)]
      {:duckdb {:query query
-               :on-success [:set-schedule]
+               :on-success [:format-schedule]
                :on-failure [:bad-fetch-result]}})))
 
 (rf/reg-event-fx
@@ -185,6 +185,16 @@
    (assoc db :last-updated (js/Date.))))
 
 (persisted-reg-event-db
+ :set-schedule-stations
+ (fn [db [_ val]]
+   (assoc db :schedule-stations val)))
+
+(rf/reg-event-db
+ :set-schedule
+ (fn [db [_ val]]
+   (assoc db :schedule val)))
+
+(persisted-reg-event-db
  :update-update-string
  (fn [db [_ val]]
    (assoc db :update-string val)))
@@ -193,6 +203,12 @@
  :set-all-stops
  (fn [db [_ val]]
    (assoc db :all-stops val)))
+
+(rf/reg-event-fx
+ :set-all-stops
+ (fn [{:keys [db]} [_ val]]
+   {:db (assoc db :all-stops val)
+    :dispatch [:get-schedule]}))
 
 (defn timekey [day-group] 
   (let [time-strings (mapv #(str (:time1 %) ";" (:time2 %)) day-group)] 
@@ -204,22 +220,22 @@
         compressed (u/compress-days sorted)] 
     [compressed (first group)]))
 
-(defn format-schedule [coll]
+(defn format-schedule-group [coll]
   (let [by-day (partition-by :schedule_day coll)
         grouped (group-by timekey by-day)
         update-keys (u/remap-keys-and-vals grouped get-day-name)] 
     update-keys))
 
-(rf/reg-event-db
- :set-schedule
- (fn [db [_ val]]
-   (let [stop_name1 (-> val first :stop_name1)
-         stop_name2 (-> val first :stop_name2)
-         all-weekdays (partition-by :weekday val)
-         by-direction (group-by :direction_id val)
-         formatted {"inbound" (format-schedule (get by-direction "inbound"))
-                    "outbound" (format-schedule (get by-direction "outbound"))}]
-     (assoc db :schedule formatted))))
+(rf/reg-event-fx
+ :format-schedule
+ (fn [{:keys [db]} [_ val]]
+   (let [by-direction (group-by :direction_id val)
+         formatted {"inbound" (format-schedule-group (get by-direction "inbound"))
+                    "outbound" (format-schedule-group (get by-direction "outbound"))}]
+     {
+      :dispatch [:set-schedule formatted]
+      
+      })))
 
 (rf/reg-event-db
  :set-sample-query
@@ -276,6 +292,16 @@
  :station-2
  (fn [db _]
    (get db :station-2)))
+
+(rf/reg-sub
+ :schedule-stations
+ (fn [db _]
+   (get db :schedule-stations)))
+
+(rf/reg-sub
+ :schedule
+ (fn [db _]
+   (get db :schedule)))
 
 (rf/reg-sub
  :can-submit-search
