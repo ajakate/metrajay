@@ -1,6 +1,7 @@
 (ns metrajay.duckdb
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [metrajay.util :as u]))
 
 
 (def table-map
@@ -68,7 +69,7 @@ with base as (
     st.arrival_time as time1,
     st2.arrival_time as time2,
     t.route_id,
-    t.direction_id,
+    case when t.direction_id = 0 then 'outbound' else 'inbound' end as direction_id,
     STRPTIME(LPAD(cast(c.start_date as varchar), 8, '0'), '%Y%m%d') as start_date,
     STRPTIME(LPAD(cast(c.end_date as varchar), 8, '0'), '%Y%m%d') as end_date,
     concat_ws(
@@ -98,8 +99,8 @@ with base as (
     order by t.service_id, direction_id, st.departure_time
 )
 , days as (
-    select CURRENT_DATE + i AS schedule_day,
-    STRFTIME(CURRENT_DATE + i, '%a') AS weekday
+    select CAST(strptime('{{start_date}}', '%Y-%m-%d') as DATE) + i AS schedule_day,
+    STRFTIME(CAST(strptime('{{start_date}}', '%Y-%m-%d') as DATE) + i, '%a') AS weekday
     FROM UNNEST([0,1,2,3,4,5,6]) AS t(i)
 )
 
@@ -163,4 +164,7 @@ order by d.schedule_day asc, b.direction_id asc, b.time1 asc
   (render-template second-stations-sql {:stop_id first-station-id}))
 
 (defn schedule-query [first-station-id, second-station-id]
-  (render-template get-schedule-sql {:stop_id1 first-station-id :stop_id2 second-station-id}))
+  (render-template get-schedule-sql
+                   {:stop_id1 first-station-id
+                    :stop_id2 second-station-id
+                    :start_date (u/today-ymd)}))

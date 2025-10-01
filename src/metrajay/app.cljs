@@ -61,7 +61,7 @@
    [searchable-dropdown :available-stations-2 "Second Station" :set-station-2]
    (let [can-submit-search (rf/subscribe [:can-submit-search])]
      [:button.nes-btn.mt-3
-      {:on-click #(rf/dispatch [:get-schedule]) :class (if @can-submit-search "is-primary" "is-disabled")}
+      {:on-click #(rf/dispatch [:set-schedule-stations]) :class (if @can-submit-search "is-primary" "is-disabled")}
       "Get Schedule"])])
 
 (defn query-explorer []

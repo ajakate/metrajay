@@ -5,8 +5,10 @@
    [superstructor.re-frame.fetch-fx]
    [metrajay.duckdb :as duck]
    [clojure.string :as str]
+   [clojure.set :as set]
    [metrajay.env :as env]
-   [akiroz.re-frame.storage :refer [persist-db-keys]]))
+   [akiroz.re-frame.storage :refer [persist-db-keys]]
+   [metrajay.util :as u]))
 
 (rf/reg-fx
  :duckdb
@@ -96,10 +98,6 @@
        {:fx [[:disptach [:update-last-updated]] [:dispatch [:load-all-stops]]]}
        {:fx [[:disptach [:update-update-string body]] [:dispatch [:download-schedule]]]}))))
 
-(rf/reg-event-db
- :set-debug
- (fn [db [_ resp]]
-   (assoc db :debug resp)))
 
 (rf/reg-event-fx
  :zip-success
@@ -134,20 +132,33 @@
              :on-success [:set-all-stops]
              :on-failure [:bad-fetch-result]}}))
 
+
 (rf/reg-event-fx
- :get-second-station-list
- (fn [{:keys [db]} [_ station_obj]]
-   (let [station-id (:stop_id station_obj)
-         query (duck/second-stations-query station-id)] 
-     {:duckdb {:query query
-               :on-success [:set-available-stations-2]
-               :on-failure [:bad-fetch-result]}})))
+ :set-schedule-stations
+ (fn [{:keys [db]} [_ _]]
+   (let [all-stops (:all-stops db)
+         station1-name (:station-1 db)
+         station2-name (:station-2 db)
+         station1-objs (filter #(= station1-name (get % :stop_name)) all-stops)
+         station2-objs (filter #(= station2-name (get % :stop_name)) all-stops)
+         station1-routes (set (mapv #(:route_id %) station1-objs))
+         station2-routes (set (mapv #(:route_id %) station2-objs))
+         routes (set/intersection station1-routes station2-routes)
+         station1 (first (filter #(contains? routes (:route_id %)) station1-objs))
+         station2 (first (filter #(= (:route_id station1) (:route_id %)) station2-objs))
+         result (if (>
+                     (int (:stop_sequence station1))
+                     (int (:stop_sequence station2)))
+                  [station1 station2]
+                  [station2 station1])]
+     {:db (assoc db :schedule-stations result)
+      :dispatch [:get-schedule]})))
 
 (rf/reg-event-fx
  :get-schedule
  (fn [{:keys [db]} [_ _]]
-   (let [station1 (-> db :station-1 :stop_id)
-         station2 (-> db :station-2 :stop_id)
+   (let [station1 (-> db :schedule-stations first :stop_id)
+         station2 (-> db :schedule-stations second :stop_id)
          query (duck/schedule-query station1 station2)]
      {:duckdb {:query query
                :on-success [:set-schedule]
@@ -158,15 +169,10 @@
  (fn [{:keys [db]} [_ error]]
    {:db (assoc db :error error)}))
 
-(defn find-station-by-name [stops name]
-  (first (filter #(= (:stop_name %) name) stops)))
-
-
 (rf/reg-event-fx
  :set-station-1
  (fn [{:keys [db]} [_ station-name]]
-   {:db (assoc db :station-1 station-name)
-    :dispatch [:get-second-station-list]}))
+   {:db (assoc db :station-1 station-name)}))
 
 (rf/reg-event-fx
  :set-station-2
@@ -188,32 +194,32 @@
  (fn [db [_ val]]
    (assoc db :all-stops val)))
 
-(rf/reg-event-db
- :set-available-stations
- (fn [db [_ val]]
-   (assoc db :available-stations val)))
-
-(defn timekey [day-group]
-  (let [time-strings (mapv #(get % :time1) day-group)]
+(defn timekey [day-group] 
+  (let [time-strings (mapv #(str (:time1 %) ";" (:time2 %)) day-group)] 
     (str/join ";" time-strings)))
 
-(defn group-schedule [grouped-day]
-  (partition-by timekey grouped-day))
+(defn get-day-name [_ group]
+  (let [weekday-list  (map #(-> % first :weekday) group)
+        sorted (sort-by u/day-order weekday-list)
+        compressed (u/compress-days sorted)] 
+    [compressed (first group)]))
 
-(defn group-day [raw-times] 
-  (partition-by #(:schedule_day %) raw-times))
+(defn format-schedule [coll]
+  (let [by-day (partition-by :schedule_day coll)
+        grouped (group-by timekey by-day)
+        update-keys (u/remap-keys-and-vals grouped get-day-name)] 
+    update-keys))
 
 (rf/reg-event-db
  :set-schedule
  (fn [db [_ val]]
-   (let [grouped-day (group-day val)
-         grouped-schedule (group-schedule grouped-day)]
-     (assoc db :schedule grouped-schedule))))
-
-(rf/reg-event-db
- :set-available-stations-2
- (fn [db [_ val]]
-   (assoc db :available-stations-2 val)))
+   (let [stop_name1 (-> val first :stop_name1)
+         stop_name2 (-> val first :stop_name2)
+         all-weekdays (partition-by :weekday val)
+         by-direction (group-by :direction_id val)
+         formatted {"inbound" (format-schedule (get by-direction "inbound"))
+                    "outbound" (format-schedule (get by-direction "outbound"))}]
+     (assoc db :schedule formatted))))
 
 (rf/reg-event-db
  :set-sample-query
@@ -247,17 +253,14 @@
      sorted)))
 
 
-(defn element-in-array [obj arr]
-  (some #(= obj %) arr))
-
 (rf/reg-sub
  :available-stations-2
  :<- [:all-stops]
  :<- [:station-1]
  (fn [[all-stops station-1] _]
    (let [all-obj-for-station (filter #(= (:stop_name %) station-1) all-stops)
-         all-routes (mapv #(:route_id %) all-obj-for-station)
-         all-stations-for-route (filter #(element-in-array (get % :route_id) all-routes) all-stops)
+         all-routes (set (mapv #(:route_id %) all-obj-for-station))
+         all-stations-for-route (filter #(contains? all-routes (get % :route_id)) all-stops)
          all-names (mapv #(get % :stop_name) all-stations-for-route)
          distinct-stops (distinct all-names)
          exclude-self (filter #(not= station-1 %) distinct-stops)
