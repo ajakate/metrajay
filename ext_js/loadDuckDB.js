@@ -27,6 +27,8 @@ window.DuckDB = await instantiateDuckDB(duckdb)
 
 window.dbConnection = await DuckDB.connect();
 
+window.dbLoaded = false;
+
 async function loadCsv(tableName, csvText, updateIndexedDB) {
     console.log('Calling loadCsv with args:', tableName, csvText, updateIndexedDB);
     const conn = window.dbConnection;
@@ -73,6 +75,7 @@ async function loadCsvs(tableNamesAndCsvs) {
         const cleanedCsvText = cleanCsvText(csvText);
         await insertTable(tableName, cleanedCsvText, true, conn, duckdb)
     }
+    window.dbLoaded = true;
 }
 
 async function loadCsvsFromIndexedDB(tableNames) {
@@ -84,6 +87,7 @@ async function loadCsvsFromIndexedDB(tableNames) {
         const csvText = await get(tableName);
         await insertTable(tableName, csvText, false, conn, duckdb)
     }
+    window.dbLoaded = true;
 }
 
 async function checkIfKVExists(tableNames) {
