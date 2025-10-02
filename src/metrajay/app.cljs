@@ -46,24 +46,19 @@
 (defn home-page []
   (fn []
     (let [favorites @(rf/subscribe [:favorites])]
-      [:div.nes-container.with-title.is-centered.mt-3.mx-3
-       [:p.title "Saved Routes"]
+      [:div.nes-container.with-title.is-centered.mt-3.mx-1.px-1
+       [:p.title.mt-2 "Saved Routes"]
        (if (seq favorites)
-         [:<>
-          [:table.nes-table.is-bordered 
-           [:tbody
-            (for [i favorites]
-              ^{:key (str i)}
-              [:tr
-               [:td 
-                [:button.nes-btn
-                 {:on-click #(rfe/push-state :schedule {} {:stop1 (-> i first :stop_id) :stop2 (-> i second :stop_id)})}
-                 (str (-> i first :stop_id) "-" (-> i second :stop_id))]] 
-               [:td
-                [:button.nes-btn
-                 {:on-click #(rf/dispatch [:remove-from-favorites i])}
-                 "Delete"]]]
-              )]]]
+         [:div.flex.flex-col
+          (for [i favorites]
+            ^{:key (str i)}
+            [:div.flex.flex-row.justify-between.mb-2
+             [:button.nes-btn.is-primary
+              {:on-click #(rfe/push-state :schedule {} {:stop1 (-> i first :stop_id) :stop2 (-> i second :stop_id)})}
+              [:p.text-xs (str (-> i first :stop_id) " > " (-> i second :stop_id))]]
+             [:button.nes-btn.is-error
+              {:on-click #(rf/dispatch [:remove-from-favorites i])}
+              [:p.text-xs "Delete"]]])]
          [:<>
           [:p.mb-3 "You currently have no saved routes..."]
           [:button.nes-btn
@@ -106,16 +101,10 @@
 
 (defn search-page []
   [:div.nes-container.with-title.is-centered.mt-3.mx-3
-   [:p.title "Search Route"]
-   [:button.nes-btn.is-primary
-    {:on-click #(rf/dispatch [:download-schedule])}
-    "Schedule"]
-   [:button.nes-btn.is-primary
-    {:on-click #(rf/dispatch [:load-all-stops])}
-    "Search"]
+   [:p.title "Search Route"] 
    [:button.nes-btn.is-primary
     {:on-click #(rf/dispatch [:clear-search-selection])}
-    "Clear Selection"]
+    [:p.text-xs "Clear Selection"]]
 
    [searchable-dropdown :available-stations "First Station" :set-station-1 :station-1 :set-query-1 :query-1]
    [searchable-dropdown :available-stations-2 "Second Station" :set-station-2 :station-2 :set-query-2 :query-2]
@@ -169,11 +158,13 @@
 
 (defn header []
   [:div.bg-red-500.flex.justify-between
-   [:p.ml-2 "metrajay"] 
+   [:p.ml-2 "metrajay"]
+   [:button
+    {:on-click #(rfe/push-state :search)}
+    "Search"]
    [:button
     {:on-click #(rfe/push-state :home)}
-    "Home"
-    ]])
+    "Home"]])
 
 (defn root-component []
   [:div.flex.flex-col.w-full.max-w-lg.mx-auto
@@ -222,6 +213,4 @@
   (rf/dispatch-sync [:init-local-storage])
   (rf/dispatch-sync [:init-db])
   (init-routes!)
-  (rdomc/render @root [root-component])
-  ;;   (rdomc/render @root [query-explorer])
-  )
+  (rdomc/render @root [root-component]))
