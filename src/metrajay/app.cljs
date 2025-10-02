@@ -43,6 +43,36 @@
                    ^{:key col}
                    [:td (str (get row col))])])]])]]))))
 
+(defn home-page []
+  (fn []
+    (let [favorites @(rf/subscribe [:favorites])]
+      [:div.nes-container.with-title.is-centered.mt-3.mx-3
+       [:p.title "Saved Routes"]
+       (if (seq favorites)
+         [:<>
+          [:table.nes-table.is-bordered 
+           [:tbody
+            (for [i favorites]
+              ^{:key (str i)}
+              [:tr
+               [:td 
+                [:button.nes-btn
+                 {:on-click #(rfe/push-state :schedule {} {:stop1 (-> i first :stop_id) :stop2 (-> i second :stop_id)})}
+                 (str (-> i first :stop_id) "-" (-> i second :stop_id))]] 
+               [:td
+                [:button.nes-btn
+                 {:on-click #(rf/dispatch [:remove-from-favorites i])}
+                 "Delete"]]]
+              )]]]
+         [:<>
+          [:p.mb-3 "You currently have no saved routes..."]
+          [:button.nes-btn
+           {:on-click #(rfe/push-state :search)}
+           [:div
+            [:span "Search Routes"]
+            [:i.nes-icon.search]]]]
+         )])))
+
 (defn searchable-dropdown [subscription-keyword title set-station-event station-sub query-event query-sub]
   (let [open? (r/atom false)]
     (fn []
@@ -96,7 +126,8 @@
 
 (defn schedule-page []
   (let [schedule (rf/subscribe [:schedule])
-        stations [(:station1 @schedule) (:station2 @schedule)]]
+        stations [(:station1 @schedule) (:station2 @schedule)]
+        can-add-to-favorites @(rf/subscribe [:can-add-to-favorites])]
     (r/with-let [active-bound (r/atom :inbound)
                  active-key   (r/atom nil)]
       (let [station-1 (-> stations first :stop_name)
@@ -106,6 +137,10 @@
             schedule-list (get-in @schedule [@active-bound @active-key])]
         [:<>
          [:div.flex.flex-col.nes-container.p-1
+          [:div
+           [:button.nes-btn
+            {:on-click #(rf/dispatch [:add-to-favorites stations])}
+            (if can-add-to-favorites "Add to Favorites" "nope")]]
           [:div.flex.flex-row
            [:button.nes-btn.grow {:class (when (= @active-bound :inbound) "is-primary is-disabled")
                                   :on-click #(reset! active-bound :inbound)}
@@ -134,9 +169,11 @@
 
 (defn header []
   [:div.bg-red-500.flex.justify-between
-   [:p.ml-2 "metrajay"]
-   [:div
-    [:p.mr-2 "updated"]]])
+   [:p.ml-2 "metrajay"] 
+   [:button
+    {:on-click #(rfe/push-state :home)}
+    "Home"
+    ]])
 
 (defn root-component []
   [:div.flex.flex-col.w-full.max-w-lg.mx-auto
@@ -146,7 +183,13 @@
        [view]))])
 
 (def routes
-  [["/search"
+  [["/"
+    {:name :home
+     :view home-page
+     :controllers
+     [{:start (fn [_] (js/console.log "Enter home"))
+       :stop  (fn [_] (js/console.log "Leaving home"))}]}]
+   ["/search"
     {:name :search
      :view search-page
      :controllers
@@ -161,7 +204,7 @@
        :start (fn [{:keys [query]}]
                 (rf/dispatch [:get-schedule [(:stop1 query) (:stop2 query)]]))
        :stop (fn [_]
-               (rf/dispatch [:clear-schedule]))}]}]])
+               (js/console.log "TODO: clear schedule maybe"))}]}]])
 
 (def router (reitit/router routes))
 

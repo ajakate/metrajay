@@ -25,7 +25,7 @@
   [event-id handler]
   (rf/reg-event-fx
    event-id
-   [(persist-db-keys :metrajay-app [:update-string :last-updated])]
+   [(persist-db-keys :metrajay-app [:update-string :last-updated :favorites])]
    (fn [{:keys [db]} event-vec]
      {:db (handler db event-vec)})))
 
@@ -282,6 +282,20 @@
  (fn [db [_ _]]
    (assoc db :station-1 nil :station-2 nil :query-1 "" :query-2 "")))
 
+(persisted-reg-event-db
+ :add-to-favorites
+ (fn [db [_ _]]
+   (let [favorites (get db :favorites [])
+         current-route [(-> db :schedule :station1) (-> db :schedule :station2)]]
+     (assoc db :favorites (conj favorites current-route)))))
+
+(persisted-reg-event-db
+ :remove-from-favorites
+ (fn [db [_ val]]
+   (let [favorites (get db :favorites [])
+         without-val (filter #(not= val %) favorites)]
+     (assoc db :favorites without-val))))
+
 
 ;; Subscriptions
 
@@ -347,11 +361,26 @@
    (get db :schedule)))
 
 (rf/reg-sub
+ :favorites
+ (fn [db _]
+   (get db :favorites [])))
+
+(rf/reg-sub
  :can-submit-search
  :<- [:station-1]
  :<- [:station-2]
  (fn [[station-1 station-2] _]
    (and (seq station-1) (seq station-2))))
+
+(rf/reg-sub
+ :can-add-to-favorites
+ :<- [:favorites]
+ :<- [:schedule]
+ (fn [[favorites schedule] _]
+   (let [schedule-hash (str (-> schedule :station1 :stop_id)  (-> schedule :station2 :stop_id))
+         favorites-map (set (mapv #(str (:stop_id (first %)) (:stop_id (second %))) favorites))]
+     (not (contains? favorites-map schedule-hash)))))
+
 
 (rf/reg-sub
  :sample-query
