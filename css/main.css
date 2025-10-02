@@ -2,4 +2,8 @@ html {
   cursor: auto;
 }
 
+.nes-btn {
+  image-rendering: pixelated;
+}
+
 /*# sourceMappingURL=main.css.map */
