@@ -25,7 +25,7 @@
   [event-id handler]
   (rf/reg-event-fx
    event-id
-   [(persist-db-keys :metrajay-app [:update-string :last-updated :schedule-stations])]
+   [(persist-db-keys :metrajay-app [:update-string :last-updated])]
    (fn [{:keys [db]} event-vec]
      {:db (handler db event-vec)})))
 
@@ -186,11 +186,6 @@
  (fn [db [_ _]]
    (assoc db :last-updated (js/Date.))))
 
-(persisted-reg-event-db
- :set-schedule-stations
- (fn [db [_ val]]
-   (assoc db :schedule-stations val)))
-
 (rf/reg-event-db
  :set-schedule
  (fn [db [_ val]]
@@ -345,11 +340,6 @@
  :query-2
  (fn [db _]
    (get db :query-2)))
-
-(rf/reg-sub
- :schedule-stations
- (fn [db _]
-   (get db :schedule-stations)))
 
 (rf/reg-sub
  :schedule
