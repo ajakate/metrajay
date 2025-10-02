@@ -9,15 +9,23 @@ html {
   border-image-repeat: stretch;
   border-image-source: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="5" height="5"><rect x="2" y="1" width="1" height="1" fill="rgb(33,37,41)"/><rect x="1" y="2" width="1" height="1" fill="rgb(33,37,41)"/><rect x="3" y="2" width="1" height="1" fill="rgb(33,37,41)"/><rect x="2" y="3" width="1" height="1" fill="rgb(33,37,41)"/></svg>');
   image-rendering: pixelated;
-  image-rendering: crisp-edges; /* fallback */
+  image-rendering: crisp-edges;
 }
 
 .nes-input {
   border-image-source: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="5" height="5"><rect x="2" y="1" width="1" height="1" fill="rgb(33,37,41)"/><rect x="1" y="2" width="1" height="1" fill="rgb(33,37,41)"/><rect x="3" y="2" width="1" height="1" fill="rgb(33,37,41)"/><rect x="2" y="3" width="1" height="1" fill="rgb(33,37,41)"/></svg>');
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border-image-repeat: stretch;
+  border-style: solid;
 }
 
 .nes-table .is-bordered {
   border-image-source: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="5" height="5"><rect x="2" y="1" width="1" height="1" fill="rgb(33,37,41)"/><rect x="1" y="2" width="1" height="1" fill="rgb(33,37,41)"/><rect x="3" y="2" width="1" height="1" fill="rgb(33,37,41)"/><rect x="2" y="3" width="1" height="1" fill="rgb(33,37,41)"/></svg>');
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border-image-repeat: stretch;
+  border-style: solid;
 }
 
 /*# sourceMappingURL=main.css.map */
