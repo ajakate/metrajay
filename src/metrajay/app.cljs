@@ -127,9 +127,10 @@
         [:<>
          [:div.flex.flex-col.nes-container.p-1
           [:div
-           [:button.nes-btn
-            {:on-click #(rf/dispatch [:add-to-favorites stations])}
-            (if can-add-to-favorites "Add to Favorites" "nope")]]
+           (when can-add-to-favorites 
+             [:button.nes-btn
+              {:on-click #(rf/dispatch [:add-to-favorites stations])}
+              "Add to Favorites"])]
           [:div.flex.flex-row
            [:button.nes-btn.grow {:class (when (= @active-bound :inbound) "is-primary is-disabled")
                                   :on-click #(reset! active-bound :inbound)}
