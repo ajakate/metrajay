@@ -9,6 +9,7 @@
   [re-frisk-remote "1.6.0"]
   [day8.re-frame/http-fx "0.2.4"]
   [superstructor/re-frame-fetch-fx "0.4.0"]
+  [metosin/reitit "0.9.1"]
   [cljs-ajax "0.8.4"]]
 
  :dev-http {8080 "public"}
