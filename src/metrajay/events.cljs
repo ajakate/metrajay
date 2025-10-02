@@ -12,6 +12,43 @@
    [reitit.frontend.easy :as rfe]
    [metrajay.util :as u]))
 
+(def easy-persisted
+  [:update-string
+   :last-updated
+   :all-stops])
+
+(def easy-events
+  [:query-1
+   :query-2
+   :schedule
+   :sample-query
+   :all-stops])
+
+(defn persisted-reg-event-db
+  [event-id handler]
+  (rf/reg-event-fx
+   event-id
+   [(persist-db-keys :metrajay-app (conj easy-persisted :favorites))]
+   (fn [{:keys [db]} event-vec]
+     {:db (handler db event-vec)})))
+
+(persisted-reg-event-db :init-local-storage (fn [db] db))
+
+
+(doseq [value easy-persisted]
+  (let [update-name (keyword (str "set-" (name value)))]
+    (persisted-reg-event-db
+     update-name
+     (fn [db [_ val]]
+       (assoc db value val)))))
+
+(doseq [value easy-events]
+  (let [update-name (keyword (str "set-" (name value)))]
+    (rf/reg-event-db
+     update-name
+     (fn [db [_ val]]
+       (assoc db value val)))))
+
 (rf/reg-fx
  :duckdb
  (fn [{:keys [query on-success on-failure]}]
@@ -20,16 +57,6 @@
        (.then #(when on-success (rf/dispatch (conj on-success %))))
        (.catch #(when on-failure (rf/dispatch (conj on-failure %)))))))
 
-
-(defn persisted-reg-event-db
-  [event-id handler]
-  (rf/reg-event-fx
-   event-id
-   [(persist-db-keys :metrajay-app [:update-string :last-updated :favorites])]
-   (fn [{:keys [db]} event-vec]
-     {:db (handler db event-vec)})))
-
-(persisted-reg-event-db :init-local-storage (fn [db] db))
 
 (rf/reg-event-db
  :navigated
@@ -103,8 +130,8 @@
    (let [body (:body response)
          current-string (:update-string db)]
      (if (= body current-string)
-       {:fx [[:disptach [:update-last-updated]] [:dispatch [:load-all-stops]]]}
-       {:fx [[:disptach [:update-update-string body]] [:dispatch [:download-schedule]]]}))))
+       {:fx [[:disptach [:set-last-updated (js/Date.)]] [:dispatch [:load-all-stops]]]}
+       {:fx [[:disptach [:set-update-string body]] [:dispatch [:download-schedule]]]}))))
 
 
 (rf/reg-event-fx
@@ -181,36 +208,6 @@
    (let [all-stops (:all-stops db)]
      {:db (assoc db :station-2 (get-obj-for-station station-name all-stops))})))
 
-(persisted-reg-event-db
- :update-last-updated
- (fn [db [_ _]]
-   (assoc db :last-updated (js/Date.))))
-
-(rf/reg-event-db
- :set-schedule
- (fn [db [_ val]]
-   (assoc db :schedule val)))
-
-(persisted-reg-event-db
- :update-update-string
- (fn [db [_ val]]
-   (assoc db :update-string val)))
-
-(rf/reg-event-db
- :set-all-stops
- (fn [db [_ val]]
-   (assoc db :all-stops val)))
-
-(rf/reg-event-db
- :set-query-1
- (fn [db [_ val]]
-   (assoc db :query-1 val)))
-
-(rf/reg-event-db
- :set-query-2
- (fn [db [_ val]]
-   (assoc db :query-2 val)))
-
 (rf/reg-event-fx
  :navigate-to-schedule
  (fn [{:keys [db]} [_ val]]
@@ -232,11 +229,6 @@
      (rfe/push-state :schedule {}
                      {:stop1 (-> result first :stop_id)
                       :stop2 (-> result second :stop_id)}))))
-
-(rf/reg-event-fx
- :set-all-stops
- (fn [{:keys [db]} [_ val]]
-   {:db (assoc db :all-stops val)}))
 
 (defn timekey [day-group]
   (let [time-strings (mapv #(str (:time1 %) ";" (:time2 %)) day-group)]
@@ -265,11 +257,6 @@
                     :station2 {:stop_name (:stop_name2 station) :stop_id (:stop_id2 station)}}]
      {:dispatch [:set-schedule formatted]})))
 
-(rf/reg-event-db
- :set-sample-query
- (fn [db [_ val]]
-   (assoc db :sample-query val)))
-
 (rf/reg-event-fx
  :run-sample-query
  (fn [{:keys [db]} [_ query]]
@@ -297,16 +284,29 @@
      (assoc db :favorites without-val))))
 
 
-;; Subscriptions
+;; Subscriptions ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; --
+;; Subscriptions ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; --
+;; Subscriptions ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; --
+;; Subscriptions ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; --
+;; Subscriptions ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; -- ;; --
 
-(rf/reg-sub
- :all-stops
- (fn [db _]
-   (get db :all-stops [])))
 
-(rf/reg-sub
- :current-route
- (fn [db _] (:current-route db)))
+(def easy-subs
+  [:all-stops
+   :current-route
+   :station-1
+   :station-2
+   :query-1
+   :query-2
+   :schedule
+   :favorites
+   :sample-query])
+
+(doseq [event easy-subs]
+  (rf/reg-sub
+   event
+   (fn [db _]
+     (-> db event))))
 
 (rf/reg-sub
  :current-view
@@ -336,36 +336,6 @@
      sorted)))
 
 (rf/reg-sub
- :station-1
- (fn [db _]
-   (get db :station-1)))
-
-(rf/reg-sub
- :station-2
- (fn [db _]
-   (get db :station-2)))
-
-(rf/reg-sub
- :query-1
- (fn [db _]
-   (get db :query-1)))
-
-(rf/reg-sub
- :query-2
- (fn [db _]
-   (get db :query-2)))
-
-(rf/reg-sub
- :schedule
- (fn [db _]
-   (get db :schedule)))
-
-(rf/reg-sub
- :favorites
- (fn [db _]
-   (get db :favorites [])))
-
-(rf/reg-sub
  :can-submit-search
  :<- [:station-1]
  :<- [:station-2]
@@ -380,9 +350,3 @@
    (let [schedule-hash (str (-> schedule :station1 :stop_id)  (-> schedule :station2 :stop_id))
          favorites-map (set (mapv #(str (:stop_id (first %)) (:stop_id (second %))) favorites))]
      (not (contains? favorites-map schedule-hash)))))
-
-
-(rf/reg-sub
- :sample-query
- (fn [db _]
-   (get db :sample-query [])))

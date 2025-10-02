@@ -55,7 +55,8 @@
             [:div.flex.flex-row.justify-between.mb-2
              [:button.nes-btn.is-primary
               {:on-click #(rfe/push-state :schedule {} {:stop1 (-> i first :stop_id) :stop2 (-> i second :stop_id)})}
-              [:p.text-xs (str (-> i first :stop_id) " > " (-> i second :stop_id))]]
+              [:p.text-xs.mb-1 (str (-> i first :stop_id) " >>")]
+              [:p.text-xs (-> i second :stop_id)]]
              [:button.nes-btn.is-error
               {:on-click #(rf/dispatch [:remove-from-favorites i])}
               [:p.text-xs "Delete"]]])]
@@ -65,8 +66,7 @@
            {:on-click #(rfe/push-state :search)}
            [:div
             [:span "Search Routes"]
-            [:i.nes-icon.search]]]]
-         )])))
+            [:i.nes-icon.search]]]])])))
 
 (defn searchable-dropdown [subscription-keyword title set-station-event station-sub query-event query-sub]
   (let [open? (r/atom false)]
@@ -101,7 +101,7 @@
 
 (defn search-page []
   [:div.nes-container.with-title.is-centered.mt-3.mx-3
-   [:p.title "Search Route"] 
+   [:p.title "Search Route"]
    [:button.nes-btn.is-primary
     {:on-click #(rf/dispatch [:clear-search-selection])}
     [:p.text-xs "Clear Selection"]]
