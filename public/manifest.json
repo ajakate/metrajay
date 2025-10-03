@@ -3,12 +3,13 @@
   "name": "MetrAjay",
   "icons": [
     {
-      "src": "./assets/metrajay.png",
+      "src": "/metrajay/assets/metrajay.png",
       "sizes": "192x192",
       "type": "image/png"
     }
   ],
-  "start_url": "/",
+  "start_url": "/metrajay/",
+  "scope": "/metrajay/",
   "display": "standalone",
   "theme_color": "black",
   "background_color": "white"
