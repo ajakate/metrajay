@@ -54,8 +54,8 @@
  (fn [{:keys [query on-success on-failure]}]
    (js/console.log "duckdb query: " query)
    (-> (duck/query-duckdb query)
-       (.then #(when on-success (rf/dispatch (conj on-success %))))
-       (.catch #(when on-failure (rf/dispatch (conj on-failure %)))))))
+       (.then #(when on-success (rf/dispatch (into on-success [%]))))
+       (.catch #(when on-failure (rf/dispatch (into on-failure [%])))))))
 
 
 (rf/reg-event-db
@@ -162,10 +162,13 @@
 
 (rf/reg-event-fx
  :load-all-stops
- (fn [{:keys [db]} [_ _]]
-   {:duckdb {:query duck/all-stations-query
-             :on-success [:set-all-stops]
-             :on-failure [:bad-fetch-result]}}))
+ (fn [{:keys [db]} [_ [_ _]]]
+   (let [loaded (.-dbLoaded js/window)]
+     (if loaded
+       {:duckdb {:query duck/all-stations-query
+                 :on-success [:set-all-stops]
+                 :on-failure [:bad-fetch-result]}}
+       {:dispatch-later {:ms 200 :dispatch [:load-all-stops]}}))))
 
 (rf/reg-event-fx
  :get-schedule
@@ -174,9 +177,11 @@
          query (duck/schedule-query station1 station2)]
      (if loaded
        {:duckdb {:query query
-                 :on-success [:format-schedule]
-                 :on-failure [:bad-fetch-result]}}
-       {:dispatch-later {:ms 200 :dispatch [:get-schedule [station1 station2]]}}))))
+                 :on-success [:format-schedule station1 station2]
+                 :on-failure [:bad-fetch-result]}
+        :db (assoc db :loading-schedule true)}
+       {:dispatch-later {:ms 200 :dispatch [:get-schedule [station1 station2]]}
+        :db (assoc db :loading-schedule true)}))))
 
 
 (rf/reg-event-fx
@@ -192,21 +197,30 @@
  (fn [{:keys [db]} [_ error]]
    {:db (assoc db :error error)}))
 
-(defn get-obj-for-station [station-name, all-stops]
+(defn get-obj-for-station-name [station-name, all-stops]
   (let [first-matching (first (filter #(= station-name (:stop_name %)) all-stops))]
+    (select-keys first-matching [:stop_id :stop_name])))
+
+(defn get-obj-for-station-id [station-id, all-stops]
+  (let [first-matching (first (filter #(= station-id (:stop_id %)) all-stops))]
     (select-keys first-matching [:stop_id :stop_name])))
 
 (rf/reg-event-fx
  :set-station-1
  (fn [{:keys [db]} [_ station-name]]
    (let [all-stops (:all-stops db)]
-     {:db (assoc db :station-1 (get-obj-for-station station-name all-stops))})))
+     {:db (assoc db :station-1 (get-obj-for-station-name station-name all-stops))})))
 
 (rf/reg-event-fx
  :set-station-2
  (fn [{:keys [db]} [_ station-name]]
    (let [all-stops (:all-stops db)]
-     {:db (assoc db :station-2 (get-obj-for-station station-name all-stops))})))
+     {:db (assoc db :station-2 (get-obj-for-station-name station-name all-stops))})))
+
+(rf/reg-event-fx
+ :clear-schedule
+ (fn [{:keys [db]} [_ _]]
+   {:db (assoc db :schedule nil)}))
 
 (rf/reg-event-fx
  :navigate-to-schedule
@@ -248,14 +262,16 @@
 
 (rf/reg-event-fx
  :format-schedule
- (fn [{:keys [db]} [_ val]]
-   (let [station (-> val first)
+ (fn [{:keys [db]} [_ station1 station2 val]]
+   (let [station-1 (get-obj-for-station-id station1 (:all-stops db))
+         station-2 (get-obj-for-station-id station2 (:all-stops db))
          by-direction (group-by :direction_id val)
          formatted {:inbound (format-schedule-group (get by-direction "inbound"))
                     :outbound (format-schedule-group (get by-direction "outbound"))
-                    :station1 {:stop_name (:stop_name1 station) :stop_id (:stop_id1 station)}
-                    :station2 {:stop_name (:stop_name2 station) :stop_id (:stop_id2 station)}}]
-     {:dispatch [:set-schedule formatted]})))
+                    :station1 station-1
+                    :station2 station-2}]
+     {:dispatch [:set-schedule formatted]
+      :db (assoc db :loading-schedule false)})))
 
 (rf/reg-event-fx
  :run-sample-query
@@ -300,6 +316,7 @@
    :query-2
    :schedule
    :favorites
+   :loading-schedule
    :sample-query])
 
 (doseq [event easy-subs]

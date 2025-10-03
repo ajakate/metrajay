@@ -53,20 +53,18 @@
           (for [i favorites]
             ^{:key (str i)}
             [:div.flex.flex-row.justify-between.mb-2
-             [:button.nes-btn.is-primary
+             [:button.nes-btn.is-primary.flex-grow.mr-2
               {:on-click #(rfe/push-state :schedule {} {:stop1 (-> i first :stop_id) :stop2 (-> i second :stop_id)})}
-              [:p.text-xs.mb-1 (str (-> i first :stop_id) " >>")]
-              [:p.text-xs (-> i second :stop_id)]]
+              [:p.text-xs.mb-1 (str (-> i first :stop_id) " -> " (-> i second :stop_id))]]
              [:button.nes-btn.is-error
               {:on-click #(rf/dispatch [:remove-from-favorites i])}
               [:p.text-xs "Delete"]]])]
          [:<>
           [:p.mb-3 "You currently have no saved routes..."]
-          [:button.nes-btn
+          [:button.nes-btn.mt-5
            {:on-click #(rfe/push-state :search)}
            [:div
-            [:span "Search Routes"]
-            [:i.nes-icon.search]]]])])))
+            [:span "Search Routes"]]]])])))
 
 (defn searchable-dropdown [subscription-keyword title set-station-event station-sub query-event query-sub]
   (let [open? (r/atom false)]
@@ -115,6 +113,7 @@
 
 (defn schedule-page []
   (let [schedule (rf/subscribe [:schedule])
+        loading (rf/subscribe [:loading-schedule])
         stations [(:station1 @schedule) (:station2 @schedule)]
         can-add-to-favorites @(rf/subscribe [:can-add-to-favorites])]
     (r/with-let [active-bound (r/atom :inbound)
@@ -124,48 +123,67 @@
             _ (when (and (nil? @active-key) (seq @schedule))
                 (reset! active-key (-> @schedule (get @active-bound) keys first)))
             schedule-list (get-in @schedule [@active-bound @active-key])]
-        [:<>
-         [:div.flex.flex-col.nes-container.p-1
-          [:div
-           (when can-add-to-favorites 
-             [:button.nes-btn
-              {:on-click #(rf/dispatch [:add-to-favorites stations])}
-              "Add to Favorites"])]
-          [:div.flex.flex-row
-           [:button.nes-btn.grow {:class (when (= @active-bound :inbound) "is-primary is-disabled")
-                                  :on-click #(reset! active-bound :inbound)}
-            "inbound"]
-           [:button.nes-btn.grow {:class (when (= @active-bound :outbound) "is-primary is-disabled")
-                                  :on-click #(reset! active-bound :outbound)}
-            "outbound"]]
-          [:div.flex.flex-row
-           (for [k (keys (get @schedule @active-bound))]
-             ^{:key k}
-             [:button.nes-btn.grow
-              {:on-click #(reset! active-key k)
-               :class (when (= @active-key k) "is-primary is-disabled")}
-              k])]]
-         [:table.nes-table.is-bordered
-          [:thead
-           [:tr
-            [:th (if (= @active-bound :inbound) station-1 station-2)]
-            [:th (if (= @active-bound :inbound) station-2 station-1)]]]
-          [:tbody
-           (for [i schedule-list]
-             ^{:key (str (:time1 i) "-" (:time2 i))}
-             [:tr
-              [:td (u/format-time (if (= @active-bound :inbound) (:time1 i) (:time2 i)))]
-              [:td (u/format-time (if (= @active-bound :inbound) (:time2 i) (:time1 i)))]])]]]))))
+        (if @loading
+          [:div.flex.flex-col.items-center
+           [:div.mt-24
+            [:p "Loading..."]]]
+          (if (empty? (-> @schedule :inbound))
+            [:div.nes-container.is-centered
+             [:div.flex.flex-col.items-center
+              [:div.mt-5.text-center
+               [:p "No schedules found for "]
+               [:p  station-1 " to " station-2]]]
+             [:button.nes-btn.mt-5
+              {:on-click #(rfe/push-state :search)}
+              [:div
+               [:span "Return to Search"]]]]
+            [:<>
+             [:div.flex.flex-col.nes-container.p-1
+              [:div
+               (when can-add-to-favorites
+                 [:button.nes-btn
+                  {:on-click #(rf/dispatch [:add-to-favorites stations])}
+                  "Add to Favorites"])]
+              [:div.flex.flex-row
+               [:button.nes-btn.grow {:class (when (= @active-bound :inbound) "is-primary is-disabled")
+                                      :on-click #(reset! active-bound :inbound)}
+                "inbound"]
+               [:button.nes-btn.grow {:class (when (= @active-bound :outbound) "is-primary is-disabled")
+                                      :on-click #(reset! active-bound :outbound)}
+                "outbound"]]
+              [:div.flex.flex-row
+               (for [k (keys (get @schedule @active-bound))]
+                 ^{:key k}
+                 [:button.nes-btn.grow
+                  {:on-click #(reset! active-key k)
+                   :class (when (= @active-key k) "is-primary is-disabled")}
+                  k])]]
+             [:table.nes-table.is-bordered
+              [:thead
+               [:tr
+                [:th (if (= @active-bound :inbound) station-1 station-2)]
+                [:th (if (= @active-bound :inbound) station-2 station-1)]]]
+              [:tbody
+               (for [i schedule-list]
+                 ^{:key (str (:time1 i) "-" (:time2 i))}
+                 [:tr
+                  [:td (u/format-time (if (= @active-bound :inbound) (:time1 i) (:time2 i)))]
+                  [:td (u/format-time (if (= @active-bound :inbound) (:time2 i) (:time1 i)))]])]]]))))))
 
 (defn header []
-  [:div.bg-red-500.flex.justify-between
-   [:p.ml-2 "metrajay"]
-   [:button
-    {:on-click #(rfe/push-state :search)}
-    "Search"]
-   [:button
-    {:on-click #(rfe/push-state :home)}
-    "Home"]])
+  [:div.bg-red-500.flex-col.p-1
+   [:div.m-2.flex
+    [:span.text-xl "MetrAjay"]
+    [:img.ml-2 {:src "./assets/metrajay.png"
+                :alt "metrajay logo"
+                :class "w-8 h-7"}]]
+   [:div.flex.justify-around
+    [:button
+     {:on-click #(rfe/push-state :home)}
+     "Home"]
+    [:button
+     {:on-click #(rfe/push-state :search)}
+     "Search"]]])
 
 (defn root-component []
   [:div.flex.flex-col.w-full.max-w-lg.mx-auto
@@ -196,7 +214,7 @@
        :start (fn [{:keys [query]}]
                 (rf/dispatch [:get-schedule [(:stop1 query) (:stop2 query)]]))
        :stop (fn [_]
-               (js/console.log "TODO: clear schedule maybe"))}]}]])
+               (rf/dispatch [:clear-schedule]))}]}]])
 
 (def router (reitit/router routes))
 
