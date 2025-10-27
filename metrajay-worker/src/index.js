@@ -9,7 +9,7 @@
  */
 
 const fetchFromMetra = async(endpoint, metraUsername, metraPassword) => {
-	return await fetch(`https://gtfsapi.metrarail.com/gtfs/raw${endpoint}`, {
+	return await fetch(`https://schedules.metrarail.com/gtfs${endpoint}`, {
 		headers: {
 			Authorization: "Basic " + btoa(metraUsername + ":" + metraPassword),
 		},
